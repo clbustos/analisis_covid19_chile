@@ -60,9 +60,12 @@ plot.tasa.casos(datos.pais,min.casos = 10,span.param = NULL)+facet_wrap(~pais)+y
 
 **NOTA**: Nuevamente, les recuerdo que aquí se presentan, como ejemplo, dos metodologías para interpretar los datos. No tiene validez epidemiologica.
 
-Una forma sencilla de extrapolar la información es utilizando una regresión exponencial. Como pudimos observar previamente, esta predicción se ajusta bien a los datos de Brasil y Chile, donde las medidas de mitigación/supresión llevan poco tiempo, vs las de España e Italia, donde las medidas de mitigación/supresión llevan más tiempo.
+Para predecir, se ocupan tres técnicas distintas:
 
-Otro método común para analizar series de tiempo es el modelo autorregresivo integrado de media  móvil(ARIMA), el cual está diseñado para encontrar patrones en los datos que permita generar predicciones en el futuro. En nuestro caso, tras ajustar la serie de casos nuevos con un modelo exponencial, se ajustan lo que sobra de la predicción por un modelo AR(1) para todos los países. Esto es, se corrige la predicción de la tendencia consideando el valor del día previo; en Chile, por ejemplo, el reporte de casos de un día suele ser  menor tras un reporte mayor a lo esperado el día previo, y viceversa.  
+* regresión exponencial sobre datos totales: se ajusta la serie a la expresión $y=a * r^t$ usando regresión lineal. Es válida si el proceso no cambia a lo largo del tiempo. Se caracteriza porque el intervalo de confianza es constante al transformar los datos a logaritmo. 
+* tendencia sobre casos nuevos + AR(1): Se modela la tendencia de los casos nuevos usando regresión exponencial, más la relación que existe entre dos mediciones contiguas. El error estándar aumenta de manera importante a lo largo del tiempo, tanto por el error al calcular la tendencia, como por el componente AR(1). El valor medio obtenido es bastante sensible a los cambios en las mediciones finales.
+* ARIMA(1,1,0) más deriva: Se ocupa un modelo autorregresivo, con diferenciación y deriva. Esto implica que se asume que los datos tienen una tendencia constante (como el modelo de regresión exponencial), y que lo que modela es el cambio (como el modelo de tendencia). Tiende a generar modelos menos variables que el tendencia + AR(1), pero también es menos sensible a los cambios más recientes de tendencia
+
 
 Como podemos ver en los gráficos, el modelo exponencial y tendencia+AR(1) es muy similar para Chile y Brasil. En el caso de España e Italia, el modelo exponencial tiende a predecir mayores valores que el AR(1) con un evidente desajuste con respecto a los datos reales, lo que nos indicaría que este modelo no resulta válido para la serie completa.
 ```{r}
@@ -72,7 +75,7 @@ plot( prediccion)
 
 A continuación, se presentan las predicciones para los próximos 7 días, usando tendencia de datos nuevos + AR(1), que tiende a ser bastante sensible a la evolución de los últimos días. Considerando lo breve de la escala de tiempo, el intervalo de confianza se vuelve muy grande pasado tres días para Chile y Brasil, no así para los países con línea de tiempo mayores.
 ```{r}
-lapply(prediccion$arima,function(x) {knitr::kable(round(tail(x,7)[,c(1,2,3,4)],2))})
+lapply(prediccion$tar1,function(x) {knitr::kable(round(tail(x,7)[,c(1,2,3,4)],2))})
 ```
 
 Ahora, la predicción por método exponencial, que tiende a funcionar bien para procesos sin cambios recientes.
@@ -81,6 +84,11 @@ Ahora, la predicción por método exponencial, que tiende a funcionar bien para 
 lapply(prediccion$exp,function(x) {knitr::kable(round(tail(x,7)[,c(1,2,3,4)],2))})
 ```
 
+El modelo ARIMA(1,1,0) más deriva mantiene la tendencia del modelo exponencial, pero corrigiendo los errores estándar en función de la inestabilidad de las mediciones contiguas.
+
+```{r}
+lapply(prediccion$arima,function(x) {knitr::kable(round(tail(x,7)[,c(1,2,3,4)],2))})
+```
 Fuentes de información:
 
 * Chile: https://www.minsal.cl/nuevo-coronavirus-2019-ncov/casos-confirmados-en-chile-covid-19/.
