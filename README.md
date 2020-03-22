@@ -14,6 +14,8 @@ Se presentan ejemplos de visualización de series de tiempo, usando los datos pa
 
 La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para más información.
 
+## Informes comparativos de Chile vs Italia, España y Brasil
+
 -   **Informe día 20/03/2020**:
     <a href="https://rpubs.com/clbustos/587389" class="uri">https://rpubs.com/clbustos/587389</a>
 -   **Informe día 21/03/2020**:
@@ -22,4 +24,6 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
     <a href="https://rpubs.com/clbustos/587947" class="uri">https://rpubs.com/clbustos/587947</a>    
     
     
-    
+## Informes regionales
+
+* 22/03/2020: https://rpubs.com/clbustos/587952
