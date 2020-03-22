@@ -9,7 +9,7 @@ output: html_document
 source("analisis.R")
 knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
 # Para mantener los datos al día pertinente, debo ajustar la base de datos.pais
-datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43909,]})
+datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43910,]})
 
 ```
 

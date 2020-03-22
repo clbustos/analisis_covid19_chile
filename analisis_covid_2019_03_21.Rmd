@@ -9,6 +9,7 @@ output: html_document
 source("analisis.R")
 knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
 library(pander)
+datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43910,]})
 ```
 
 **NOTA**: Lo que presento aquí es un ejemplo de como realizar análisis de series de tiempo, usando datos de la evolución total de casos disponible en fuentes públicas en internet. No tiene ninguna validez epidemiológica, ya que eso requería un modelo de la diseminación de la enfermedad. En particular, las predicciones son solo válidas en cuanto no existan cambios en las políticas públicas; si los hay, se esperaría que (ojalá) las predicciones fuesen incorrectas.

@@ -108,6 +108,7 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
     )
   })
 
+  # Ya que es una cuenta, mejor modelo los casos predichos usando Poisson (imposible que sea negativo)
   x.tar1<-lapply(xx,function(x) {
     x<-x[x$casos>=min.casos,]
     ult.dia<-x$dia[length(x$dia)]
@@ -117,6 +118,9 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
     log.diff<-log(d.casos)
     dias.dif<-1:length(log.diff)
     lm.parc<-lm(log.diff~poly(dias.dif,2))
+    #lm.parc<-glm(d.casos~poly(dias.dif,2), family = "poisson")
+    #print(exp(predict(lm.parc)))
+    #print(predict(glm.parc,type="response"))
     aa<-arima(resid(lm.parc),c(1,0,0))
     # Debemos predecir el trend, mas el residuo
     pr.trend.0<-predict(lm.parc, newdata=data.frame(dias.dif=(length(log.diff)+1):(length(log.diff)+n.ahead)),se.fit=T)
@@ -152,7 +156,7 @@ plot.prediccion.casos<-function(x) {
   todo.unido<-unique(todo.unido)
   ggplot(todo.unido, aes(x=dia, y=casos, ymin=li,ymax=ls,color=tipo))+
     geom_point(size=0.5)+
-    geom_line()+
+    geom_line(size=2)+
     geom_ribbon(alpha=0.1)+
     facet_wrap(~pais)+
     scale_y_continuous(trans="log10")

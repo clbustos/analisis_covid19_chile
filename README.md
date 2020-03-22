@@ -18,3 +18,8 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
     <a href="https://rpubs.com/clbustos/587389" class="uri">https://rpubs.com/clbustos/587389</a>
 -   **Informe día 21/03/2020**:
     <a href="https://rpubs.com/clbustos/587595" class="uri">https://rpubs.com/clbustos/587595</a>
+-   **Informe día 22/03/2020**:
+    <a href="https://rpubs.com/clbustos/587947" class="uri">https://rpubs.com/clbustos/587947</a>    
+    
+    
+    
