@@ -1,3 +1,12 @@
+# Como usted se está dando la lata de leer el código
+# Le cuento que todo este ejercicio está hecho para predecir en qué día se nos acaban las camas
+# críticas. Las tasas de pacientes críticos están en el paper
+# "Characteristics of and Important Lessons From the Coronavirus Disease 2019 (COVID-19) Outbreak in China"
+# que todos ocupan para las cifras que se esperan de hospitalizados
+# la cifra de 860 corresponde al número de camas críticas disponibles
+# disponibles de las totales (20% de 1800 de adultos) más
+# 500 que pueden ser reconvertidas.
+# Debería cargar primero el archivo analisis.R para que corra bien.
 
 predecir.dia.critico.chile<-function() {
   lm.1<-lm(log(casos)~dia, data=datos.pais$Chile)
@@ -10,6 +19,14 @@ predecir.dia.critico.chile<-function() {
   which(distribucion$critico>860)
 
 }
+
+#' Permite graficar el avance por país/zona
+#'
+#' @param x base de datos, revisar analisis.R para ver ejemplo
+#' @param min.casos número mínimo de casos a considerar, desde el cual se grafica
+#' @param span.param parámetro de suavizado de curva
+#' @param log.param  si se presenta o no en escala logaritmica el eje Y
+#' @param predicted si se presenta o no la curva exponencial predicha.
 
 plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predicted=TRUE) {
 
@@ -47,6 +64,13 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
 
   gg
 }
+
+#' Grafica la tasa de casos
+#'
+#' @param  x base de datos, revisar analisis.R para ver ejemplo
+#' @param min.casos mínimo número de casos válidos desde el cual se construye la curva
+#' @param span.param parámetro de suavizado de la curva
+#' @param ventana ventana de días para realizar media móvil.
 
 plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3) {
   x<-lapply(x,function(x) {
@@ -122,6 +146,7 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
     #print(exp(predict(lm.parc)))
     #print(predict(glm.parc,type="response"))
     aa<-arima(resid(lm.parc),c(1,0,0))
+
     # Debemos predecir el trend, mas el residuo
     pr.trend.0<-predict(lm.parc, newdata=data.frame(dias.dif=(length(log.diff)+1):(length(log.diff)+n.ahead)),se.fit=T)
     pr.resid.0<-predict(aa,n.ahead=n.ahead)

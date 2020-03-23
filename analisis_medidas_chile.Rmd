@@ -1,0 +1,34 @@
+---
+title: "Análisis tendencia fases Chile"
+author: "Claudio Bustos"
+date: "22/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(openxlsx)
+library(ggplot2)
+a<-read.xlsx("chile_medidas.xlsx")
+a$casos.nuevos<-c(1,diff(a$casos))
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Una pregunta relevante es que efecto tiene la toma de medidas sobre la aparición de nuevos casos. Un problema interesante es la demora que se tiene entre la implementación de las medidas y la aparición de un efecto apreciable. 
+
+Como es usual en estos casos, es bueno plotear el gráfico en logaritmo en el eje Y. Marcaremos con colores distinto los días de acuerdo al momento. Se puede ver claramente que a partir del día 3 hay un aumento constante de casos hasta el día 15, para luego producirse un estancamiento a partir del día 16 en adelante.
+
+```{r}
+ggplot(a, aes(x=dia, y=casos.nuevos, color=nivel))+scale_y_continuous(trans = "log10")+geom_point()
+```
+
+Como la fase 3 duro solo 2 días, es conveniente fundirla con el nivel 1-2. Además, se debería partir la seria a partir del día 4.
+
+Usando esta nueva estructura , es más fácil visualizar la estructura de los datos.
+```{r}
+a2<-a[-c(1,2,3),]
+a2$nivel2<-car::Recode(a2$nivel, "c('fase 1-2','fase 3')='fase 1-3';")
+ggplot(a2, aes(x=dia, y=casos.nuevos, color=nivel2))+scale_y_continuous(trans = "log10")+geom_point()
+```
+
+Si tomamos en cuenta el paso de la fase 1-2 a la 3-4, parece que la estabilización de la curva se produce aproximadamente 6 días después.
+
