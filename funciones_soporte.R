@@ -59,7 +59,7 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
 
   }
   if (!is.null(span.param)) {
-    gg<-gg+geom_smooth(span=span.param)
+    gg<-gg+geom_smooth(span=span.param, alpha=0.75)
   }
 
   gg
