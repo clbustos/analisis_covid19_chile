@@ -1,0 +1,145 @@
+---
+title: "Análisis evolución Covid-19 - Chile vs Italia, España, Brasil, Corea del Sur (25/03/2020)"
+author: "Claudio Bustos"
+date: "25/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("analisis.R")
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+library(pander)
+datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43914,]})
+```
+
+**NOTA**: Lo que presento aquí es un ejemplo de como realizar análisis de series de tiempo, usando datos de la evolución total de casos disponible en fuentes públicas en internet. No tiene ninguna validez epidemiológica, ya que eso requería un modelo de la diseminación de la enfermedad. En particular, las predicciones son solo válidas en cuanto no existan cambios en las políticas públicas; si los hay, se esperaría que (ojalá) las predicciones fuesen incorrectas.
+
+* Reportes anteriores: https://github.com/clbustos/analisis_covid19_chile
+
+## Análisis de datos observados
+
+
+Se utiliza una escala logarítmica, que permite mejor apreciar las tendencias en los casos totales. En el caso de Chile, resulta claro que la toma de medidas ha disminuido la progresión de casos, pero no es suficiente para lograr aplanar la curva. Tanto Italia como España siguen bajando sus tasas, pero siguen trayectorias muy similares. Brasil es muy preocupante, porque su tendencia sigue prácticamente igual que en las primeras semanas.
+
+```{r}
+datos.pais.2<-datos.pais
+datos.pais.2[["Chile"]]$pais<-"Z_Chile"
+plot.avance.pais(datos.pais.2,predicted = F,min.casos = 100)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1)
+```
+
+
+Ajustando una regresión exponencial, esta representa bastante bien todavía la situación de Brasil, pero no la de Chile, que muestra una disminución en su tasa, pasando de 46% el 20 a 36.8% el día 22. En el caso de Chile, esta tasa de aumento diario indicaría una duplicación de casos cada `r round(log(2)/log(1.3608),2)` días.
+
+```{r}
+plot.avance.pais(datos.pais,predicted = T,min.casos = 20, span.param = NULL)+facet_wrap(~pais)
+```
+
+Graficando la tasa de nuevos casos usando media móvil con ventana de 3 días, se observa que Chile ha disminuido la tasa los últimos días de forma estable, pero se requieren medidas más fuertes para llegar a niveles inferiores a 1. Brasil presenta una leve disminución. España presenta tasas progresivamente menores, pero no logra el incremento menor que se aprecia en Italia. Corea del Sur ya está cerca del punto de inflexión, donde la cantidad de casos de un día es siempre menor que la del anterior.
+
+
+```{r}
+plot.tasa.casos(datos.pais,min.casos = 100,span.param = NULL)+
+  facet_wrap(~pais)+
+  ylim(0.9,2.3)+
+  geom_abline(intercept=1.3804, slope=0,alpha=0.5)+
+  geom_abline(intercept=1, slope=0,alpha=0.5,col="darkgreen")
+```
+
+
+## Predicción
+
+**NOTA**: Se presentan aquí tres metodologías de predicción. Recuerden que corresponden a un ejercicio para mostrar las bondades y dificultades de cada técnica
+
+Para predecir, se ocupan tres técnicas distintas:
+
+* regresión exponencial sobre datos totales: se ajusta la serie a la expresión $y=a * r^t$ usando regresión lineal. Es válida si el proceso no cambia a lo largo del tiempo. Se caracteriza porque el intervalo de confianza es constante al transformar los datos a logaritmo. 
+* tendencia sobre casos nuevos + AR(1): Se modela la tendencia de los casos nuevos usando regresión exponencial, más la relación que existe entre dos mediciones contiguas. El error estándar aumenta de manera importante a lo largo del tiempo, tanto por el error al calcular la tendencia, como por el componente AR(1). El valor medio obtenido es bastante sensible a los cambios en las mediciones finales.
+* ARIMA(1,1,0) más deriva: Se ocupa un modelo autorregresivo, con diferenciación y deriva. Esto implica que se asume que los datos tienen una tendencia constante (como el modelo de regresión exponencial), y pero se modela la relación que existe entre casos contiguos (como el modelo de tendencia). Tiende a generar modelos menos variables que el de tendencia + AR(1), pero asume que la curva de crecimiento es la misma de toda la serie de datos.
+
+## Predicción Chile y Brasil
+
+Revisando las series anteriores, se puede observar que valor para cada día se encuentra usualmente entre el de casos nuevos (tendencia + AR) y el modelo exponencial. Esto podría indicar que el proceso ya tiene dos componentes, uno que responde a las medidas de contención y otro de casos nuevos, previos o simultáneos a la introducción de estas medidas.
+
+```{r}
+prediccion<-prediccion.casos(datos.pais[c("Chile","Brasil")],min.casos = 20)
+plot( prediccion)
+```
+
+Se presentan a continuación las distintas predicciones. Se debe recordar los supuestos de cada modelo para realizar una interpretación adecuada.
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$exp, function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Exponencial")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$arima,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "ARIMA(1,1,0) con deriva")
+```
+
+
+## Predicción España e Italia
+
+Para Italia, las curvas ARIMA y de últimos casos se alejan del modelo exponencial total, lo que es claro indicio del efecto de las medidas de mitigación. Por tanto, se utilizará como mínimo para la curva para 5000 casos. Incluso, con este ajuste la curva exponencial no logra ajustarse bien - lo que indica el efecto de las políticas de supresión. 
+
+En el caso de España, pareciera ser que las medidas de mitigación no ha permitido controlar lo suficiente la expansión de la enfermedad. 
+
+
+
+```{r}
+prediccion<-prediccion.casos(datos.pais[c("Italia","España")],min.casos = 5000)
+plot( prediccion)
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$exp, function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Exponencial")
+```
+
+
+```{r,results='asis'}
+r<-lapply(prediccion$arima,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "ARIMA(1,1,0) con deriva")
+```
+
+## Predicción Corea del Sur
+
+En el caso de Corea del Sur, la clara curva de control indica que debemos generar la curva desde los 7500 casos. Aquí, ya las tres curvas coinciden, lo que indica que el proceso a corto plazo es similar al proceso general, de muy pocos casos por día.
+
+
+
+```{r}
+prediccion<-prediccion.casos(datos.pais[c("Corea.del.Sur")],min.casos = 7500)
+plot( prediccion)
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$exp, function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Exponencial")
+```
+
+
+```{r,results='asis'}
+r<-lapply(prediccion$arima,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "ARIMA(1,1,0) con deriva")
+```
+
+Fuentes de información:
+
+* Chile: https://www.minsal.cl/nuevo-coronavirus-2019-ncov/casos-confirmados-en-chile-covid-19/.
+* Otros países: https://www.worldometers.info/coronavirus/#countries

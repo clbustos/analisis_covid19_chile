@@ -21,9 +21,11 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 -   22/03/2020: https://rpubs.com/clbustos/587947
 -   23/03/2020: https://rpubs.com/clbustos/588293
 -   24/03/2020: https://rpubs.com/clbustos/covid-19-24-03-2020-chile
+-   25/03/2020: https://rpubs.com/clbustos/589304
     
 ## Informes regionales
 
 * 22/03/2020: https://rpubs.com/clbustos/587952
 * 23/03/2020: https://rpubs.com/clbustos/covid-19-23-03-2020-chile-regiones
 * 24/03/2020: https://rpubs.com/clbustos/588748
+* 25/03/2020: https://rpubs.com/clbustos/589302
