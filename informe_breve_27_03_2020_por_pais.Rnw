@@ -1,0 +1,86 @@
+\documentclass[utf8x]{beamer}
+\usetheme{metropolis}
+\mode<presentation>
+
+\usepackage[utf8x]{inputenc}
+\usepackage[spanish]{babel}
+
+\title{Análisis curva Chile Covid-19}
+\author{Claudio Bustos}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Chile y otros países: 27 de Marzo 2020}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+source("analisis.R")
+datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43916,]})
+datos.pais.2<-datos.pais
+datos.pais.2[["Chile"]]$pais<-"Z_Chile"
+print(plot.avance.pais(datos.pais.2,predicted = F,min.casos = 250)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1))
+@
+\end{figure}
+\par{Nota: Día desde el caso 200 o superior}
+\end{frame}
+
+
+\begin{frame}{Chile: 27 de Marzo 2020}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+print(plot.avance.pais(datos.pais[c("Chile")],predicted = F,min.casos = 200, span.param = 0.8)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1)+scale_x_continuous(limits=c(0,35)))
+@
+\end{figure}
+\par{Nota: Día desde el caso 200 o superior}
+\end{frame}
+
+\begin{frame}{España: 27 de Marzo 2020}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+print(plot.avance.pais(datos.pais[c("España")],predicted = F,min.casos = 200, span.param = 0.8)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1)+scale_x_continuous(limits=c(0,35)))
+@
+\end{figure}
+\par{Nota: Día desde el caso 200 o superior}
+\end{frame}
+
+\begin{frame}{Italia: 27 de Marzo 2020}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+print(plot.avance.pais(datos.pais[c("Italia")],predicted = F,min.casos = 200, span.param = 0.8)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1)+scale_x_continuous(limits=c(0,35)))
+@
+\end{figure}
+\par{Nota: Día desde el caso 200 o superior}
+\end{frame}
+
+\begin{frame}{EEUU: 27 de Marzo 2020}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+print(plot.avance.pais(datos.pais[c("EEUU")],predicted = F,min.casos = 200, span.param = 0.8)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1)+scale_x_continuous(limits=c(0,35)))
+@
+\end{figure}
+\par{Nota: Día desde el caso 200 o superior}
+\end{frame}
+
+\begin{frame}{Corea del Sur: 27 de Marzo 2020}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+print(plot.avance.pais(datos.pais[c("Corea.del.Sur")],predicted = F,min.casos = 200, span.param = 0.8)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1)+scale_x_continuous(limits=c(0,35)))
+@
+\end{figure}
+\par{Nota: Día desde el caso 200 o superior}
+\end{frame}
+
+\begin{frame}{Brasil: 27 de Marzo 2020}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+print(plot.avance.pais(datos.pais[c("Brasil")],predicted = F,min.casos = 200, span.param = 0.8)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1)+scale_x_continuous(limits=c(0,35)))
+@
+\end{figure}
+\par{Nota: Día desde el caso 200 o superior}
+\end{frame}
+
+\end{document}

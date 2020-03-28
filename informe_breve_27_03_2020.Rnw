@@ -1,0 +1,201 @@
+\documentclass[utf8x]{beamer}
+\usetheme{metropolis}
+\mode<presentation>
+
+\usepackage[utf8x]{inputenc}
+\usepackage[spanish]{babel}
+
+\title{Análisis curva Chile Covid-19}
+\author{Claudio Bustos}
+
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Tabla de Contenidos}
+  \tableofcontents
+\end{frame}
+\section{Expansión de enfermedad como función exponencial}
+\begin{frame}{Proceso lineal en el tiempo}
+
+\par{Un fenómeno que se desarrolla \textbf{linealmente} en el tiempo, se caracteriza porque en cada unidad, se suma o resta cierta cantidad, independiente del valor previo. La podemos expresar como}
+\begin{align*}
+y_t= a+ b* t
+\end{align*}
+\par{Donde $a$ es la cantidad inicial, $b$ la tasa de incremento por periodo de tiempo y $t$, el tiempo transcurrido.}
+\par{\textfbf{Ejemplo:} Dinero que ahorro a fin de año, si cada mes ahora una cantidad $c$ fija: $12*c$ }
+\end{frame}
+\begin{frame}{Como se ve un proceso lineal}
+\begin{figure}[ht]
+<<echo=false,fig=true,width=7,height=4>>=
+curve(10000*x, from = 0,to=12)
+@
+\end{figure}
+\par{Si ahorro 10000 pesos mensuales, a fin de año tendré 120.000}
+\end{frame}
+
+\begin{frame}{Proceso multiplicativo en el tiempo}
+
+\par{Un fenómeno que se desarrolla \textbf{multiplicativamente} en el tiempo, se caracteriza porque el valor en cada unidad de tiempo es una proporción de una precedente}
+\par{\textfbf{Ejemplo:} Interés compuesto. Cada mes, el valor de la deuda es igual al del mes previo más un interés, el cual a su vez ya tenía un interés asignado.  }
+\end{frame}
+\begin{frame}{Como se ve un proceso multiplicativo}
+\begin{figure}[ht]
+<<echo=false,fig=true,width=7,height=4>>=
+deuda<-10000*(1.2)^(0:12)
+plot(0:12,deuda, xlab="mes",ylab="deuda")
+@
+\end{figure}
+\par{Si mi deuda es de 10000 al mes 0, al mes 12 es de 89161 con un interés compuesto de 20 por ciento. Sí, mi prestamista es un usurero.}
+\end{frame}
+
+\begin{frame}{Modelando un proceso multiplicativo}
+\par{Se necesitan tres elementos, $A$, $b$ y $t$.}
+\begin{itemize}
+\item Primero, $A$ es la cantidad inicial. Por ejemplo, los 10.000 de mi préstamo
+\item En segundo lugar, $B$ es la tasa de incremento en cada periodo. En nuestro ejemplo, 1.20 (1 por la cantidad original, más una proporción extra de .2)
+\item Finalmente, $t$ es la cantidad de tiempo desde el momento original.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Calculando cuanto le debo al usurero}
+\begin{itemize}
+\item{Para el momento original, t=0,  $y_0 = A =10000$.}
+\item{Para el momento t=1 (mes 1) : $y_1 = A*B = 12000$.}
+\item{Para el momento t=2 (mes 2) : $y_1 = y_1*B = A*B*B = 14400$.}
+\end{itemize}
+\par{Y así sucesivamente. Si recordamos la definición de potencia, vemos que podemos resumir en: }
+\begin{align*}
+y_t=AB^t
+\end{align*}
+\end{frame}
+\begin{frame}{Función exponencial}
+\par{Si bien nuestro proceso multiplicativo queda claramente definido por $y_t=Ab^t$, es relativamente complejo tratar de ajustar datos directamente a esta expresión. Una forma cómoda de lograr linealizar este modelo es usar la función exponencial.}
+\par{El truco del asunto es reemplazar a $B$ por una potencia de $e$ (constante de Napier), por lo que $B=e^k$. Queda la expresión entonces}
+\begin{align*}
+y_t&=A(e^k)^t\\
+&=Ae^{kt}
+\end{align*}
+\end{frame}
+
+\begin{frame}{Linealizando la función exponencial}
+\par{Para linealizar la función exponencial, basta aplicar logaritmo}
+
+\begin{align*}
+log(y_t)&=log(Ae^{kt})\\
+&=log(A)+kt
+\end{align*}
+\par{Si consideramos que una ecuación lineal el tiempo tenía la forma: $y_t= a + b * t$, podemos ver que $a$ se reemplaza por $log(A)$ y $b$ por $k$. Si queremos recuperar el $B$, la tasa de incremento, basta resolver $B=e^k$   }
+\end{frame}
+
+\begin{frame}{Expansión de enfermedad como proceso multiplicativo}
+\par{Al modelar el desarrollo de la transmisión de las enfermedad, es util al menos en primer momento considerarlo como un proceso multiplicativo. La tasa de incremento dependerá del número de personas con las cuales se contacte cada infectado, así como de la probabilidad que infecte a otros.}
+\par{Para el desarrollo completo del proceso, se necesitan modelos epidemiológicos como el \textbf{SIR} (susceptible, infectados, recuperados) y otros más complejos.}
+\end{frame}
+\section{Chile y otros países. 27-Marzo-2020}
+\begin{frame}{Chile y otros países: 27 de Marzo 2020}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+source("analisis.R")
+datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43916,]})
+datos.pais.2<-datos.pais
+datos.pais.2[["Chile"]]$pais<-"Z_Chile"
+print(plot.avance.pais(datos.pais.2,predicted = F,min.casos = 250)+theme_bw()+viridis::scale_color_viridis(discrete=TRUE,direction = -1))
+@
+\end{figure}
+\par{Nota: Día desde el caso 200 o superior}
+\end{frame}
+
+\begin{frame}{Adecuación de función exponencial: día 1}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+source("analisis.R")
+plot.avance.pais(datos.pais[c("Chile")],predicted = T, span.param = NULL)+facet_wrap(~pais)
+@
+\end{figure}
+\par{Nota: El gráfico comienza desde el caso 1 en adelante}
+\end{frame}
+\begin{frame}{Adecuación de función exponencial}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+source("analisis.R")
+plot.avance.pais(datos.pais[c("Chile")],predicted = T,min.casos = 250, span.param = NULL)+facet_wrap(~pais)
+@
+\end{figure}
+\par{Nota: El gráfico comienza desde el caso 250 en adelante}
+\end{frame}
+
+
+\begin{frame}{Tasas de cambio}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+plot.tasa.casos(datos.pais,min.casos = 10,span.param = NULL)+
+  facet_wrap(~pais)+
+  ylim(0.9,2.3)+
+    geom_abline(intercept=1.4, slope=0,alpha=0.5,col="darkred")+
+  geom_abline(intercept=1.2, slope=0,alpha=0.5,col="orange")+
+  geom_abline(intercept=1, slope=0,alpha=0.5,col="darkgreen")+theme_bw()
+@
+\end{figure}
+\par{Nota: El gráfico comienza desde el caso 10 en adelante}
+\end{frame}
+
+\section{Predicción}
+\begin{frame}{Predecir: limitaciones.}
+\par{Para predecir como evolucionará los contagios de una enfermedad, lo ideal es contar con la información completa de dónde están los casos, cuales fueron los contactos y cual es la probabilidad de contagio. \textbf{No tenemos esa información para Chile}}
+\par{Por tanto, solo tratamos de seguir la secuencia, usando distintos modelos para diversos supuestos}
+\end{frame}
+\begin{frame}{Modelo 1: Exponencial}
+\par{Es el más sencillo, y que se suele utilizar en los medios de prensa. Simplemente, utilizamos la función $y_t=A*e^{kt}$ a los datos para obtener $k$ y seguimos la secuencia con los días que necesitamos. Asume que el proceso de contagio permanerá sin cambios con respecto al periodo estudiado, tanto en número de contacto como en probabilidad de contagio. Si la curva exponencial cambia con el tiempo, el siguiente dato predicho aparecera como despegado de la serie precedente}
+\end{frame}
+\begin{frame}{Modelo 2: ARIMA(1,1,0) con deriva}
+\par{El problema al ajustar el  modelo exponencial con una regresión lineal común sobre los logaritmos es que asume que las mediciones son independientes entre ellas. Si asumimos que la información de un día influye en lo que ocurre en el siguiente, no aplica este supuesto. Por tanto, utilizamos un modelo que considera que los casos nuevos de un día a otro siguen una tendencia multiplicativa (como el modelo exponencial), pero también se ven influidos por el valor del dia previo, como un modelo AR(1). Este modelo funciona como un exponencial, que parte desde el ultimo día conocido}
+\end{frame}
+
+\begin{frame}{Modelo 3: Nuevos casos + AR(1)}
+\par{Otra forma de entender el problema es considerando solo el patrón que se observa en los casos nuevos, los cuales se suman a los ya existentes. En este caso, se modelo como una regresión cuadrática, que acepta una aceleración o desaceleración de la tasa de contagios. Además, se incorpora el componente AR(1) para dar cuenta de la relación entre medidas contiguas.}
+\end{frame}
+
+
+\begin{frame}{Predicción Chile: desde caso 10}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+prediccion<-prediccion.casos(datos.pais[c("Chile")],min.casos = 10)
+plot( prediccion)
+@
+\end{figure}
+\par{Nota: El gráfico comienza desde el caso 10 en adelante}
+\end{frame}
+
+\begin{frame}{Predicción desde caso 10}
+<<echo=false,results=tex>>=
+library(xtable)
+res1<-t(sapply(prediccion[c("tar2","arima","exp")],function(x){tail(x$Chile,1)[,2:4]}))
+xtable(res1)
+@
+\end{frame}
+\begin{frame}{Predicción Chile: desde caso 250}
+\begin{figure}[ht]
+<<echo=false,fig=TRUE,width=7,height=4>>=
+prediccion<-prediccion.casos(datos.pais[c("Chile")],min.casos = 250)
+plot( prediccion)
+@
+\end{figure}
+\par{Nota: El gráfico comienza desde el caso 250 en adelante}
+\end{frame}
+
+\begin{frame}{Predicción desde caso 250}
+<<echo=false,results=tex>>=
+library(xtable)
+res1<-t(sapply(prediccion[c("tar2","arima","exp")],function(x){tail(x$Chile,1)[,2:4]}))
+xtable(res1)
+@
+\end{frame}
+\begin{frame}
+¡Gracias por su tiempo!
+\end{frame}
+\end{document}

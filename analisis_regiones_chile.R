@@ -25,7 +25,7 @@ datos.pais<-lapply(n.regiones,function(i) {
 })
 
 # Eliminemos las regiones que tienen menos de 10 casos
-
+datos.pais.0<-datos.pais
 for(i in n.regiones) {
   casos.ultimo<-tail(datos.pais[[i]],1)$casos
   if(casos.ultimo<20) {

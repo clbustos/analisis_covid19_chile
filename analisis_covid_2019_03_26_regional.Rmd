@@ -22,18 +22,24 @@ datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43915,]})
 El día de hoy se incorpora Antofagasta, con una progresión de casos pequeña. Araucanía destaca por su alza sin un claro efecto de las medidas de mitigación, en tanto que Biobío sigue estando muy cerca de la Región de Metropolitana. La situación en Ñuble aparece ya contenida. 
 
 ```{r}
-plot.avance.pais(datos.pais,predicted = F,min.casos = 10,span.param = 0.7)+viridis::scale_color_viridis(discrete=TRUE,direction = -1)
+plot.avance.pais(datos.pais,predicted = F,min.casos = 10,span.param = 0.5)+viridis::scale_color_viridis(discrete=TRUE)+guides(color=guide_legend("Región"))
+```
+
+El mismo gráfico, pero separando las regiones
+
+```{r}
+plot.avance.pais(datos.pais,predicted = F,min.casos = 10,span.param = 0.5)+viridis::scale_color_viridis(discrete=TRUE)+guides(color=guide_legend("Región"))+facet_wrap(~pais)
 ```
 
 
 El día de hoy podemos distinguir tres tipos de regiones, de avance rápido (sobre 30% diario), avance moderado (20%-30%) y lento (<20%)
 
 ```{r}
-plot.avance.pais(datos.pais[c("Araucanía","Metropolitana","Biobío")],predicted = T,min.casos = 10, span.param = NULL)+facet_wrap(~pais)+scale_y_continuous(limits=c(NA,1500),trans="log10")
+plot.avance.pais(datos.pais[c("Araucanía","Metropolitana","Biobío")],predicted = T,min.casos = 10, span.param = NULL)+facet_wrap(~pais)+scale_y_continuous(limits=c(NA,1500),trans="log10")+guides(color=guide_legend("Región"))
   
-plot.avance.pais(datos.pais[c("Valparaíso","Ñuble","Los.Lagos")],predicted = T,min.casos = 10, span.param = NULL)+facet_wrap(~pais)+scale_y_continuous(limits=c(NA,1500),trans="log10")
+plot.avance.pais(datos.pais[c("Valparaíso","Ñuble","Los.Lagos")],predicted = T,min.casos = 10, span.param = NULL)+facet_wrap(~pais)+scale_y_continuous(limits=c(NA,1500),trans="log10")+guides(color=guide_legend("Región"))
   
-plot.avance.pais(datos.pais[c("Antofagasta","Maule")],predicted = T,min.casos = 10, span.param = NULL)+facet_wrap(~pais)+scale_y_continuous(limits=c(NA,1500),trans="log10")
+plot.avance.pais(datos.pais[c("Antofagasta","Maule")],predicted = T,min.casos = 10, span.param = NULL)+facet_wrap(~pais)+scale_y_continuous(limits=c(NA,1500),trans="log10")+guides(color=guide_legend("Región"))
 
   
 ```
@@ -41,7 +47,7 @@ plot.avance.pais(datos.pais[c("Antofagasta","Maule")],predicted = T,min.casos = 
 Graficando la tasa de nuevos casos usando media móvil con ventana de 3 días, se aprecia mejor el control que se ha logrado sobre la región Metropolitana, Maule y Ñuble, y se aprecia mejor el problema en Biobío, La Araucanía y Valparaíso.
 
 ```{r}
-plot.tasa.casos(datos.pais,span.param = NULL)+facet_wrap(~pais)+geom_abline(slope=0,intercept=1.2,col="darkgreen",alpha=0.5)+geom_abline(slope=0,intercept=1.4,col="orange",alpha=0.5)
+plot.tasa.casos(datos.pais,span.param = NULL)+facet_wrap(~pais)+geom_abline(slope=0,intercept=1.2,col="darkgreen",alpha=0.5)+geom_abline(slope=0,intercept=1.4,col="orange",alpha=0.5)+guides(color=guide_legend("Región"))
 ```
 
 
@@ -61,13 +67,13 @@ Recordemos que la predicción usando los últimos casos (T+AR(1)) tiende a mostr
 
 ```{r}
 prediccion<-prediccion.casos(datos.pais,min.casos = 10)
-plot( prediccion)
+plot( prediccion)+guides(color=guide_legend("Región"))
 ```
 
 
 ```{r,results='asis'}
-r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
-formatear_tablas(r, "Tendencia + AR(1)")
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Casos nuevos: tendencia + AR(1)")
 ```
 
 ```{r,results='asis'}

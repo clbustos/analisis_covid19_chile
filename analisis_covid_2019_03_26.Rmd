@@ -67,7 +67,7 @@ plot( prediccion)
 Se presentan a continuación las distintas predicciones. Se debe recordar los supuestos de cada modelo para realizar una interpretación adecuada.
 
 ```{r,results='asis'}
-r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
 formatear_tablas(r, "Tendencia + AR(1)")
 ```
 
@@ -96,7 +96,7 @@ plot( prediccion)
 ```
 
 ```{r,results='asis'}
-r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
 formatear_tablas(r, "Tendencia + AR(1)")
 ```
 
@@ -123,7 +123,7 @@ plot( prediccion)
 ```
 
 ```{r,results='asis'}
-r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
 formatear_tablas(r, "Tendencia + AR(1)")
 ```
 
