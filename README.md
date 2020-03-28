@@ -1,6 +1,6 @@
 ---
-title: Análisis de series de tiempo, usando los datos de casos para Covid-19
-author: Claudio Bustos
+title: "Análisis de series de tiempo, usando los datos de casos para Covid-19"
+author: "Claudio Bustos"
 ---
 
 Se presentan ejemplos de visualización de series de tiempo, usando los datos para Covid-19, en R. Entre ellos, está:
@@ -23,7 +23,11 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 -   24/03/2020: https://rpubs.com/clbustos/covid-19-24-03-2020-chile
 -   25/03/2020: https://rpubs.com/clbustos/589304
 -   26/03/2020: https://rpubs.com/clbustos/590058
--   27/03/2020:  https://rpubs.com/clbustos/590727   
+-   27/03/2020:  https://rpubs.com/clbustos/590727
+-   28/03/2020: https://rpubs.com/clbustos/591120
+
+
+
 ## Informes regionales
 
 * 22/03/2020: https://rpubs.com/clbustos/587952
@@ -32,3 +36,4 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 25/03/2020: https://rpubs.com/clbustos/589302
 * 26/03/2020: https://rpubs.com/clbustos/590066
 * 27/03/2020: https://rpubs.com/clbustos/590726
+* 28/03/2020: https://rpubs.com/clbustos/591118
