@@ -26,6 +26,7 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 -   27/03/2020:  https://rpubs.com/clbustos/590727
 -   28/03/2020: https://rpubs.com/clbustos/591120
 -   29/03/2020: https://rpubs.com/clbustos/591626
+-   30/03/2020: https://rpubs.com/clbustos/592278
 
 
 ## Informes regionales
@@ -38,3 +39,4 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 27/03/2020: https://rpubs.com/clbustos/590726
 * 28/03/2020: https://rpubs.com/clbustos/591118
 * 29/03/2020: https://rpubs.com/clbustos/591628
+* 30/03/2020: https://rpubs.com/clbustos/592284
