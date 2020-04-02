@@ -27,7 +27,8 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 -   28/03/2020: https://rpubs.com/clbustos/591120
 -   29/03/2020: https://rpubs.com/clbustos/591626
 -   30/03/2020: https://rpubs.com/clbustos/592278
-
+-   31/03/2020: https://rpubs.com/clbustos/592810
+-   01/04/2020: https://rpubs.com/clbustos/593316
 
 ## Informes regionales
 
@@ -40,3 +41,10 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 28/03/2020: https://rpubs.com/clbustos/591118
 * 29/03/2020: https://rpubs.com/clbustos/591628
 * 30/03/2020: https://rpubs.com/clbustos/592284
+* 31/03/2020: https://rpubs.com/clbustos/592808
+* 01/04/2020: https://rpubs.com/clbustos/593314
+
+
+## Lecturas interesantes.
+
+* [Don't trust the psychologist on coronavirus](https://unherd.com/2020/03/dont-trust-the-psychologists-on-coronavirus/)

@@ -47,7 +47,7 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
 
   unido<-do.call(rbind,x )
 
-  gg<-ggplot(unido, aes(x=dia, y=casos, color=pais))+geom_point()
+  gg<-ggplot(unido, aes(x=dia, y=casos, color=pais))+geom_point(alpha=0.5)
 
   #+annotate("text",x=5,y=10000,label="hola")
   if(log.param) {
@@ -59,7 +59,7 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
 
   }
   if (!is.null(span.param)) {
-    gg<-gg+geom_smooth(span=span.param, alpha=0.75)
+    gg<-gg+geom_smooth(span=span.param, alpha=0.75,se = FALSE)
   }
 
   gg
@@ -72,12 +72,18 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
 #' @param span.param parámetro de suavizado de la curva
 #' @param ventana ventana de días para realizar media móvil.
 
-plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3) {
+plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2=FALSE) {
   x<-lapply(x,function(x) {
     x<-x[x$casos>=min.casos,]
     dif.log.casos<-c(0,diff(log(x$casos)))
-    roll.mean<-zoo::rollmean(x=dif.log.casos,k=ventana)
-    data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
+
+    if(derivada.2) {
+      roll.mean<-zoo::rollmean(x=c(0,diff(dif.log.casos)),k=ventana)
+      data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
+    } else {
+      roll.mean<-zoo::rollmean(x=dif.log.casos,k=ventana)
+      data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
+    }
     #x$dia<-0:(nrow(x)-1)
     #x<-x[-1,]
     #x
