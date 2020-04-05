@@ -1,0 +1,83 @@
+---
+title: "Prueba modelo predictivo (27 de Marzo a 3 de Abril)"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+```{r,echo=F}
+source("analisis.R")
+```
+
+Todo modelo predictivo debe probarse con datos reales, para determinar su validez. Una forma de medir el grado de error es el error medio cuadrático, que se calcula
+
+$$ 
+EMC= \sum_i^k \frac{(y_i-\hat{y_i})^2}{n}
+$$
+
+Donde $y_i$ es el dato observado en el momento $i$, entanto que $\hat{y_i}$ es valor predicho. En nuestros ejemplos, como todo lo hacemos sobre el logaritmo de las curvas, se calcular el EMC sobre los valores al logaritmo
+
+Probaremos la adecuación de los tres modelos, usando el modelo calculado el día [28 de Marzo](https://rpubs.com/clbustos/591120). Tal como se puede ver, justo al día siguiente de la predicción se observa un cambio en la curva que dejo todos los modelos fuera del rango predictivo.
+```{r}
+calcular.mse<-function(x,y) {
+  mean((log(x$casos)-log(y$casos))^2)
+}
+dato.al.28.3<-datos.pais$Chile[datos.pais$Chile$fecha<=43917,]
+dato.al.3.4<-datos.pais$Chile[datos.pais$Chile$fecha<=43924,]
+
+dato.obs<-data.frame(
+  dia=dato.al.3.4$dia,
+  casos=dato.al.3.4$casos,
+  li=dato.al.3.4$casos, 
+  ls=dato.al.3.4$casos,
+  tipo="Observado",
+  pais="Chile"
+)
+
+datos.obs<-tail(dato.al.3.4,7)
+prediccion<-prediccion.casos(list(Chile=dato.al.28.3),min.casos = 250)
+
+p.tar21<-tail(prediccion$tar2$Chile,7)
+p.arima1<-tail(prediccion$arima$Chile,7)
+p.expon1<-tail(prediccion$exp$Chile,7)
+para.ver<-rbind(dato.obs, p.tar21,p.arima1,p.expon1)
+library(ggplot2)
+ggplot(para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+scale_y_continuous(trans="log10")+geom_hline(yintercept = 250)
+```
+Podemos ver que, a diferencia de la evaluación del día 28 que consideró el modelo del día 21 que consideraba 20 casos (revisar Github), donde el MSE de T+AR(1) era de 0.003 para el periodo, ahora ascendió a 0.21, siendo el ARIMA y el Exponencial prácticamente idénticos en su capacidad predictiva.
+
+```{r}
+data.frame("T+AR(1)"=calcular.mse(datos.obs, p.tar21),
+           "ARIMA(1,0,0)"=calcular.mse(datos.obs, p.arima1),
+           "Exponencial"=calcular.mse(datos.obs, p.expon1)
+           )
+
+```
+
+
+Viendo la situación en contexto, podemos ver que la razón de la falla podría ser que solo consideramos la curva sobre 250 casos. Si consideramos la curva desde los 50 casos, el modelo de predicción T+AR(1) presenta un mucho mejor comportamiento.
+
+
+```{r}
+
+prediccion<-prediccion.casos(list(Chile=dato.al.28.3),min.casos = 50)
+p.tar22<-tail(prediccion$tar2$Chile,7)
+p.arima2<-tail(prediccion$arima$Chile,7)
+p.expon2<-tail(prediccion$exp$Chile,7)
+para.ver<-rbind(dato.obs, p.tar22,p.arima2,p.expon2)
+library(ggplot2)
+ggplot(para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+scale_y_continuous(trans="log10")
+```
+
+Claramente, al utilizar una serie más larga el modelo ARIMA y exponencial se dañan, pero el de tendencia funciona mucho mejor.
+
+```{r}
+data.frame("T+AR(1)"=calcular.mse(datos.obs, p.tar22),
+           "ARIMA(1,0,0)"=calcular.mse(datos.obs, p.arima2),
+           "Exponencial"=calcular.mse(datos.obs, p.expon2)
+           )
+
+```
+
+Conclusión: Durante la próxima semana, la predicción se realizará usando un modelo que parta del día 50, no desde el caso 250.

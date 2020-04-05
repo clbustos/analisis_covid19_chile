@@ -29,6 +29,10 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 -   30/03/2020: https://rpubs.com/clbustos/592278
 -   31/03/2020: https://rpubs.com/clbustos/592810
 -   01/04/2020: https://rpubs.com/clbustos/593316
+-   02/04/2020: https://rpubs.com/clbustos/593866
+-   03/04/2020: https://rpubs.com/clbustos/594294
+-   04/04/2020: https://rpubs.com/clbustos/594787
+
 
 ## Informes regionales
 
@@ -43,8 +47,18 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 30/03/2020: https://rpubs.com/clbustos/592284
 * 31/03/2020: https://rpubs.com/clbustos/592808
 * 01/04/2020: https://rpubs.com/clbustos/593314
+* 02/04/2020: https://rpubs.com/clbustos/593865
+* 03/04/2020: https://rpubs.com/clbustos/594308
+* 04/04/2020: https://rpubs.com/clbustos/594793
 
+## Pruebas del modelo predictivo:
+
+* 27 de Marzo al 3 de Abril: https://rpubs.com/clbustos/594816
 
 ## Lecturas interesantes.
 
+
+* [Projecting hospital utilization during the COVID-19 outbreaks in the United States](https://www.pnas.org/content/early/2020/04/02/2004064117)
+* [Everyone Thinks They’re Right About Masks](https://www.theatlantic.com/health/archive/2020/04/coronavirus-pandemic-airborne-go-outside-masks/609235/)
+* [Bidding wars are causing New York to pay up to 15 times the normal price for medical equipment](https://www.businessinsider.com/bidding-wars-driving-up-medical-equipment-prices-for-states-cities-2020-4)
 * [Don't trust the psychologist on coronavirus](https://unherd.com/2020/03/dont-trust-the-psychologists-on-coronavirus/)

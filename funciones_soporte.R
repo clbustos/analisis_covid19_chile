@@ -73,14 +73,21 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
 #' @param ventana ventana de días para realizar media móvil.
 
 plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2=FALSE) {
+  if(derivada.2) {
+    ylabt="tasa dia n / tasa dia n-1"
+  } else {
+    ylabt="casos dia n / casos dia n-1"
+  }
   x<-lapply(x,function(x) {
     x<-x[x$casos>=min.casos,]
     dif.log.casos<-c(0,diff(log(x$casos)))
 
     if(derivada.2) {
+
       roll.mean<-zoo::rollmean(x=c(0,diff(dif.log.casos)),k=ventana)
       data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
     } else {
+
       roll.mean<-zoo::rollmean(x=dif.log.casos,k=ventana)
       data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
     }
@@ -89,7 +96,7 @@ plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2
     #x
   })
   unido<-do.call(rbind,x )
-  gg<-ggplot(unido, aes(x=dia, y=exp(dif.log.casos), color=pais))+geom_point()+ylab("casos dia n / dia n-1")+geom_line()
+  gg<-ggplot(unido, aes(x=dia, y=exp(dif.log.casos), color=pais))+geom_point()+ylab(ylabt)+geom_line()
   if(!is.null(span.param)) {
     gg<-gg+geom_smooth(span=span.param)
   }
@@ -234,4 +241,28 @@ formatear_tablas<-function(x, nombre) {
   for(i in names(x)) {
     pandoc.table(x[[i]], paste0(nombre, " : ", i))
   }
+}
+
+#' Lee los datos en bruto, elimina los datos faltantes e interpola huecos
+#'
+#' @param data.frame, con tres campos: fecha, dia, casos
+#'
+#' @return data.frame
+#' @export
+#'
+leer.pais<-function(x) {
+  n<-nrow(x)
+  primero<-match(FALSE,is.na(x$casos))
+  ultimo<-n-match(FALSE,rev(is.na(x$casos)))+1
+  x2<-x[primero:ultimo,]
+  # Interpolamos los casos faltantes
+  if(sum(is.na(x2$casos))>0) {
+
+    faltantes<-which(is.na(x2$casos))
+    interpolaciones<-round(exp(na.interp(log(x2$casos))))
+    x2$casos[faltantes]<-interpolaciones[faltantes]
+  }
+  x2$dia<-1:nrow(x2)
+  x2$casos.nuevos<-c(x2$casos[1], diff(x2$casos))
+  x2
 }
