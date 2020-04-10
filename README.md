@@ -14,7 +14,23 @@ Se presentan ejemplos de visualización de series de tiempo, usando los datos pa
 
 La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para más información.
 
-## Informes comparativos de Chile vs Italia, España, Corea del Sur y Brasil
+## Nueva serie : Informe para Chile, casos y decesos, por regiones y total
+
+* 07/04/2020: https://rpubs.com/clbustos/596265
+* 08/04/2020: https://rpubs.com/clbustos/596636
+* 09/04/2020: https://rpubs.com/clbustos/597099
+* 10/04/2020: https://rpubs.com/clbustos/597339
+
+## Pruebas del modelo predictivo:
+
+* 27 de Marzo al 3 de Abril: https://rpubs.com/clbustos/594816
+
+## Análisis de decesos en función de los casos (experimental)
+
+* Versión 1: https://rpubs.com/clbustos/597082
+
+## Antiguos
+### Informes comparativos de Chile vs Italia, España, Corea del Sur y Brasil
 
 -   20/03/2020: https://rpubs.com/clbustos/587389
 -   21/03/2020: https://rpubs.com/clbustos/587595
@@ -34,7 +50,7 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 -   04/04/2020: https://rpubs.com/clbustos/594787
 
 
-## Informes regionales
+### Informes regionales
 
 * 22/03/2020: https://rpubs.com/clbustos/587952
 * 23/03/2020: https://rpubs.com/clbustos/covid-19-23-03-2020-chile-regiones
@@ -51,9 +67,8 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 03/04/2020: https://rpubs.com/clbustos/594308
 * 04/04/2020: https://rpubs.com/clbustos/594793
 
-## Pruebas del modelo predictivo:
 
-* 27 de Marzo al 3 de Abril: https://rpubs.com/clbustos/594816
+
 
 ## Lecturas interesantes.
 

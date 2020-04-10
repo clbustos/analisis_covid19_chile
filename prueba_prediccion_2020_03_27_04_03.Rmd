@@ -23,34 +23,40 @@ Probaremos la adecuación de los tres modelos, usando el modelo calculado el dí
 calcular.mse<-function(x,y) {
   mean((log(x$casos)-log(y$casos))^2)
 }
+
 dato.al.28.3<-datos.pais$Chile[datos.pais$Chile$fecha<=43917,]
 dato.al.3.4<-datos.pais$Chile[datos.pais$Chile$fecha<=43924,]
 
-dato.obs<-data.frame(
-  dia=dato.al.3.4$dia,
-  casos=dato.al.3.4$casos,
-  li=dato.al.3.4$casos, 
-  ls=dato.al.3.4$casos,
-  tipo="Observado",
-  pais="Chile"
+obtener.prediccion<-function(x.parc,x.comp,min.casos) {
+  dato.obs<-data.frame(
+    dia=x.comp$dia,
+    casos=x.comp$casos,
+    li=x.comp$casos, 
+    ls=x.comp$casos,
+    tipo="Observado",
+    pais="Chile"
 )
-
-datos.obs<-tail(dato.al.3.4,7)
-prediccion<-prediccion.casos(list(Chile=dato.al.28.3),min.casos = 250)
-
-p.tar21<-tail(prediccion$tar2$Chile,7)
-p.arima1<-tail(prediccion$arima$Chile,7)
-p.expon1<-tail(prediccion$exp$Chile,7)
-para.ver<-rbind(dato.obs, p.tar21,p.arima1,p.expon1)
+  prediccion<-prediccion.casos(list(Chile=x.parc),min.casos = min.casos)
+  out<-list()
+  out$dato.obs<-dato.obs
+  out$dato.obs.parc<-tail(x.comp,7)
+  out$p.tar21<-tail(prediccion$tar2$Chile,7)
+  out$p.arima1<-tail(prediccion$arima$Chile,7)
+  out$p.expon1<-tail(prediccion$exp$Chile,7)
+  out$para.ver<-rbind(out$dato.obs, out$p.tar21,out$p.arima1,out$p.expon1)
+  out
+}
 library(ggplot2)
-ggplot(para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+scale_y_continuous(trans="log10")+geom_hline(yintercept = 250)
+
+pred.250<-obtener.prediccion(dato.al.28.3, dato.al.3.4, 250)
+ggplot(pred.250$para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+scale_y_continuous(trans="log10")+geom_hline(yintercept = 250)
 ```
 Podemos ver que, a diferencia de la evaluación del día 28 que consideró el modelo del día 21 que consideraba 20 casos (revisar Github), donde el MSE de T+AR(1) era de 0.003 para el periodo, ahora ascendió a 0.21, siendo el ARIMA y el Exponencial prácticamente idénticos en su capacidad predictiva.
 
 ```{r}
-data.frame("T+AR(1)"=calcular.mse(datos.obs, p.tar21),
-           "ARIMA(1,0,0)"=calcular.mse(datos.obs, p.arima1),
-           "Exponencial"=calcular.mse(datos.obs, p.expon1)
+data.frame("T+AR(1)"=calcular.mse(pred.250$dato.obs.parc, pred.250$p.tar21),
+           "ARIMA(1,0,0)"=calcular.mse(pred.250$dato.obs.parc, pred.250$p.arima1),
+           "Exponencial"=calcular.mse(pred.250$dato.obs.parc, pred.250$p.expon1)
            )
 
 ```
@@ -61,23 +67,38 @@ Viendo la situación en contexto, podemos ver que la razón de la falla podría 
 
 ```{r}
 
-prediccion<-prediccion.casos(list(Chile=dato.al.28.3),min.casos = 50)
-p.tar22<-tail(prediccion$tar2$Chile,7)
-p.arima2<-tail(prediccion$arima$Chile,7)
-p.expon2<-tail(prediccion$exp$Chile,7)
-para.ver<-rbind(dato.obs, p.tar22,p.arima2,p.expon2)
-library(ggplot2)
-ggplot(para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+scale_y_continuous(trans="log10")
+pred.50<-obtener.prediccion(dato.al.28.3, dato.al.3.4, 50)
+ggplot(pred.50$para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+scale_y_continuous(trans="log10")+geom_hline(yintercept = 50)
 ```
 
 Claramente, al utilizar una serie más larga el modelo ARIMA y exponencial se dañan, pero el de tendencia funciona mucho mejor.
 
 ```{r}
-data.frame("T+AR(1)"=calcular.mse(datos.obs, p.tar22),
-           "ARIMA(1,0,0)"=calcular.mse(datos.obs, p.arima2),
-           "Exponencial"=calcular.mse(datos.obs, p.expon2)
+data.frame("T+AR(1)"=calcular.mse(pred.50$dato.obs.parc, pred.250$p.tar21),
+           "ARIMA(1,0,0)"=calcular.mse(pred.50$dato.obs.parc, pred.250$p.arima1),
+           "Exponencial"=calcular.mse(pred.50$dato.obs.parc, pred.250$p.expon1)
            )
 
 ```
 
-Conclusión: Durante la próxima semana, la predicción se realizará usando un modelo que parta del día 50, no desde el caso 250.
+Si utilizamos el corte del periodo anterior, con 20 casos, el modelo T+AR(1) subestima un poco, pero manteniendo un MSE similar.
+```{r}
+
+pred.20<-obtener.prediccion(dato.al.28.3, dato.al.3.4, 20)
+ggplot(pred.20$para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+scale_y_continuous(trans="log10")+geom_hline(yintercept = 50)
+```
+
+Claramente, al utilizar una serie más larga el modelo ARIMA y exponencial se dañan, pero el de tendencia funciona mucho mejor.
+
+```{r}
+data.frame("T+AR(1)"=calcular.mse(pred.20$dato.obs.parc, pred.250$p.tar21),
+           "ARIMA(1,0,0)"=calcular.mse(pred.20$dato.obs.parc, pred.250$p.arima1),
+           "Exponencial"=calcular.mse(pred.20$dato.obs.parc, pred.250$p.expon1)
+           )
+
+```
+
+
+##Conclusión##
+
+Durante la próxima semana, la predicción se realizará usando un modelo que parta del día 50, no desde el caso 250.

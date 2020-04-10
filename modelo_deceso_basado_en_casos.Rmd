@@ -1,0 +1,306 @@
+---
+title: "Modelo para decesos basado en casos, Covid 19"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+Se postula un modelo sencillo para determinar los decesos basados en el número de casos en cada país. Si bien de inmediato se aprecia que el problema se puede resolver por regresión, tenemos los siguientes problemas:
+
+- La serie de datos es corta, menor a 100 casos (hasta el momento)
+- Existe un desfase entre la presencia de casos nuevos y los decesos, que es relativamente variable.
+- Las diferencias en las tasas de letalidad no solamente se pueden atribuir a las condiciones de los pacientes, sino también a la capacidad de testeo, a las reglas para establecer cuando un deceso se atribuye a Covid y a las condiciones sanitarias de cada país. 
+
+La presencia de múltiples series nos permite de alguna solucionar el primer modelo, ya que podemos generar un modelo general, el cual tenga ajuste para el caso particular. Para el segundo problema, se puede adoptar una solución empírica de fuerza bruta, que es considerar un rango aceptable de tiempo desde que surge un caso nuevo y el deceso, usando regularización para solucionar el problema de los múltiples coeficientes necesarios en la serie. A este modelo se le denomina de [retraso distribuido](https://en.wikipedia.org/wiki/Distributed_lag). Con respecto al tercer problema, se puede asumir que las estadísticas de deceso son válidas condicional a la selección de un país, siendo el modelo general un apoyo para los casos en que no se cuente con suficiente información.
+
+Como primera metodología a probar, usaremos un modelo de regressión simple utilizando los datos de casos con lag entre 1 y 20 días. 
+
+
+Usaremos la libreria 'data2019nCoV', que guarda información sobre covid19 constantemente actualizada. Eliminaremos de la serie los totales globales, así como los datos locales dentro de China. Eliminaremos también los casos que tienen menos de 10 muertos hasta la fecha del análisis. La lista de países a analizar se presenta a continuación.
+
+```{r setup}
+source("funciones_soporte.R")
+library(ggplot2)
+library(rms)
+#library(jtools)
+
+library(dynlm)
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE)
+
+devtools::install_github("eebrown/data2019nCoV",force = TRUE)
+library(data2019nCoV)
+#try( {WHO_SR$Israel.deaths<-WHO_SR$Isreal.deaths
+#WHO_SR$Isreal.deaths<-NULL
+#})
+
+WHO_SR$Italy.deaths[WHO_SR$Date=="2020-03-17"]<-2158
+
+cn<-colnames(WHO_SR)
+cn.deaths<-cn[grep(".deaths",cn)]
+cn.deaths<-setdiff(cn.deaths,c("Global.deaths","InternationalConveyance.deaths"))
+cn.deaths<-cn.deaths[-grep("China.+.deaths",cn.deaths)]
+cn.deaths<-cn.deaths[-grep("Region.+.deaths",cn.deaths)]
+
+ult.muerte<-unlist(tail(WHO_SR[,cn.deaths],1)[1,])
+# Dejamos mínimo países con 10 o más muertes
+cn.deaths.10<-names(ult.muerte[ult.muerte>=10])
+cn.deaths.10
+cn.cases.10<-gsub(".deaths","",cn.deaths.10)
+cn.cases.10
+```
+
+Ahora, debemos construir una base de datos que nos permita realizar un análisis de regresión adecuado. Para ello, se tendrán como columnas el día, fecha, pais, numero de casos y decesos nuevos por día.
+
+```{r}
+n<-nrow(WHO_SR)
+names(cn.cases.10)<-cn.cases.10
+a.0<-lapply(cn.cases.10,function(pais) {
+  x<-data.frame(WHO_SR[,c("SituationReport","Date")],
+             pais=pais,
+             casos=c(0,diff(WHO_SR[,pais])),
+             casos.0=c(0,diff(WHO_SR[,pais])),
+             decesos=c(0,diff(WHO_SR[,paste0(pais,".deaths")])))
+  casos<-x$casos
+  
+  for(i in 1:20) {
+    x[[paste0("casos.",i)]]<-c(rep(0,i), casos[1:(n-i)])
+  }
+  x
+})
+
+a<-do.call(rbind,a.0)
+```
+
+Si ploteamos la relación entre casos y decesos nuevos durante el mismo día, podemos ver que observa una relación aproximadamente cuadrática. Sin embargo. El principal problema es que el patrón lineal o loess desde los 5000 casos diarios no representa a ningún país en particular.
+
+```{r}
+ggplot(a, aes(x=casos, y=decesos))+geom_point()+geom_smooth()+geom_smooth(method="lm", color="red")
+```
+
+
+Podemos ver que la serie de China sufre un salto abrupo (color rojo)
+
+
+```{r}
+ggplot(a, aes(x=casos, y=decesos,color=pais))+geom_point()+theme(legend.position = "none")+geom_smooth(method="gam")
+```
+
+Haciendo el gráfico respectivo para China, es fácil verificar lo antes dicho. Si bien es un caso muy importante, este cambio en la secuencia de casos es bastante difícil de modelar. Por lo tanto, lo eliminaremos de la secuencia.
+```{r}
+ggplot(a[a$pais=="China",], aes(x=Date, y=casos))+geom_point()
+```
+
+Habiendo eliminado China, interesa resolver el problema del desfase entre la detección del caso y el deceso.
+Se puede observar que la correlación de los decesos con el número de casos es máxima para un lag de 7 días
+
+```{r}
+a2<-a[a$pais!="China",]
+res<-cor(subset(a2,select=casos.0:casos.20))["decesos",-2]
+res
+plot(0:20, res,ylab="correlación",xlab="Casos dia lag(i)")
+```
+
+Si ploteamos esta relación, podemos ver en algunos países se observan relaciones aproximadamente lineales.
+```{r}
+ggplot(a2, aes(x=casos.7, y=decesos,color=pais))+geom_point()+theme(legend.position = "none")+geom_smooth(method="gam")
+```
+
+
+## Modelo de regresión simple
+
+
+
+Un modelo bastante sencillo es usar un modelo de interacción del país con el número de casos con lag 0 a 20. Por cada país, tenemos un total de 21 coeficientes propios, lo que genera un total de 2451 grados de libertad para 3570 grados. El R²=0.999, con R²adj=0.99, lo que indica una gran capacidad de predicción. 
+```{r}
+lm.1<-lm(decesos~pais*(casos+casos.1+casos.2+casos.3+casos.4+casos.5+casos.6+casos.7+casos.8+casos.9+casos.10+casos.11+casos.12+casos.13+casos.14+casos.15+casos.16+casos.17+casos.18+casos.19+casos.20),a2)
+
+resumen.lm(lm.1)
+```
+
+Si estudiamos los supuestos, podemos observar que hay falta de linealidad para predecir pocos decesos. Los residuos no presentan distribución normal y hay problemas en la varianza de los valores predichos inferiores a 0. 
+
+```{r}
+plot(lm.1)
+```
+
+Una versión un poco mejor es eliminar todas aquellas filas donde hay 0 casos y 0 decesos.
+
+```{r}
+sin.info<-rowSums(a2[,-c(1,2,3,4)])==0
+a3<-a2[!sin.info,]
+```
+
+```{r}
+lm.2<-lm(decesos~pais*(casos.0+casos.1+casos.2+casos.3+casos.4+casos.5+casos.6+casos.7+casos.8+casos.9+casos.10+casos.11+casos.12+casos.13+casos.14+casos.15+casos.16+casos.17+casos.18+casos.19+casos.20),a3)
+resumen.lm(lm.2)
+```
+Eliminar estos casos, si bien facilita el cálculo del proceso, no cambia los problemas del modelo. En particular, existe una gran cantidad de casos que presentan residuos muy grandes, con muy alto leverage.
+```{r}
+plot(lm.2)
+```
+
+## Regularización
+
+El modelo anterior, si bien parece predecir bien los casos, tiene el problema que puede resultar muy inestable. Probemos usando regularización en cada modelo por país, para detectar si existe un patrón común. 
+
+Usemos Italia como ejemplo. Podemos ver como los distintos coeficientes comienzan a alejarse de 0 apenas aumentamos la complejidad del modelo.
+```{r}
+library(glmnet)
+a.0b<-a.0
+a.0b$China<-NULL
+x<-a.0b$Italy
+xx<-as.matrix(x[,paste0("casos.",0:20)])
+yy<-x$decesos
+fit<-glmnet( xx,yy)
+plot(fit,label=TRUE)
+```
+
+Una forma de determinar el lambda optimo es utilizar validación cruzada.
+
+
+```{r}
+set.seed(12345)
+cvfit =cv.glmnet(xx, yy)
+plot(cvfit)
+```
+El lambda mínimo se encuentra cerca de 10. Se suele usar el modelo más sencillo que esté a una desviación estándar de este mínimo, que sería 29.
+```{r}
+data.frame(minimo=cvfit$lambda.min, de1=cvfit$lambda.1se)
+```
+
+En este caso, podemos ver que el modelo tiene como coeficientes más fuertes bajo los diez días.
+
+```{r}
+coef(cvfit, s="lambda.1se")
+```
+
+Si observamos la correlación entre el valor predicho y el observado, es cercano a .99
+
+```{r}
+pr.1<-predict(cvfit, s="lambda.1se",newx=xx)
+cor(pr.1,yy)
+```
+
+Si ploteamos la relación, vemos que el modelo es aproximadamente lineal.
+
+```{r}
+df.1<-data.frame(predicho=as.numeric(pr.1), observado=yy)
+
+ggplot(df.1, aes(x=predicho, y=observado))+geom_point()+geom_abline()+geom_smooth()
+```
+
+
+Si realicemos este proceso para cada país, podemos ver que existe una gran diferencia por país en los coeficientes que se fijan distinto a 0.
+
+```{r}
+res.reg<-t(sapply(a.0b,function(x) {
+  xx<-as.matrix(x[,paste0("casos.",0:20)])
+  yy<-x$decesos
+  set.seed(12345)
+  cvfit<-cv.glmnet( xx,yy)
+  c1<-coef(cvfit, s="lambda.1se")
+  
+  pr1<-predict(cvfit, s="lambda.1se", newx = xx)
+  cc<-cor(pr1,yy)  
+  
+  c1.num<-as.numeric(c1)
+  names(c1.num)<-c1@Dimnames[[1]]
+  
+  c(c1.num, r2=cc^2)
+}))
+knitr::kable(round(res.reg,3))
+```
+
+
+Si ploteamos los cuadrados de los coeficientes, podemos observar que aparecen con valores cada vez mayores mientras mayor sea el lag. En particular, el primer peak se alcanza cerca de los 6 días y son consistentemente altos sobre los 14 días.
+
+```{r}
+library(reshape2)
+res.reg2<-melt(res.reg[,-c(1,23)])
+media.coef<-aggregate(res.reg2$value^2, list(tiempo=res.reg2$Var2),mean)
+ggplot(res.reg2, aes(x=Var2, y=(value+0.0000001)^2, color=Var1))+geom_point()+geom_point(data=media.coef, mapping = aes(x=tiempo,y=x,color="red", size=2))+scale_y_continuous(trans="log10")+theme(legend.position="none")
+```
+
+
+Otra forma de ver el tema de los coeficientes es considerando en cuantos países cada coeficiente resulta distinto a 0. Se puede ver que el más frecuente es el lag 0 (casos del mía día) en cerca del 30% de los países, estando todo el resto de los coeficientes entre 5% y 22%.
+
+
+```{r}
+plot(0:20,colMeans(res.reg[,-c(1,23)]!=0),ylim=c(0,1), xlab="lag dias",ylab="p de modelos")
+```
+
+## Modelos lineares dinámicos
+
+Una forma más civilizada de trabajar es considerar los modelos por país usando un modelo lineal dinámico a una semana plazo, considerando la tendencia general de los casos previos. Se puede ver que este tipo de modelos funciona con variable precisión para cada país.
+
+```{r}
+res.dynlm<-sapply(a.0b,function(x) {
+  x<-x[rowSums(x[,4:26])>0,]
+  casos.ts<-ts(x$casos)
+  decesos.ts<-ts(x$decesos)
+  dy<-dynlm(decesos.ts~trend(decesos.ts)+L(decesos.ts)+casos.ts+L(casos.ts,1:7))
+  s1<-summary(dy)
+  r2<-s1$adj.r.squared
+  vp<-pf(s1$fstatistic[1], s1$fstatistic[2],s1$fstatistic[3],lower.tail = F )
+  c(r2=r2,vp=vp)
+})
+round(t(res.dynlm),3)
+```
+
+
+## Chile
+
+En el caso de Chile, la serie es bastante corta (37 días).  Por tanto, calcularemos lag más breve, hasta 14 días.Como se puede ver, el lag con más correlación es el 8, simil al del modelo general.
+
+```{r}
+library(openxlsx)
+chile.casos<-diff(c(0,read.xlsx("casos_chile_regiones.xlsx")$total))
+chile.decesos<-diff(c(0, read.xlsx("casos_chile_regiones.xlsx",sheet = 2)$total))
+chile<-data.frame(
+    decesos=chile.decesos,
+  casos.0=chile.casos
+)
+n<-nrow(chile)
+  for(i in 1:14) {
+    chile[[paste0("casos.",i)]]<-c(rep(0,i), chile.casos[1:(n-i)])
+  }
+
+c1<-cor(chile)[1,-1]
+plot(0:14,c1 )
+```
+
+
+
+Veamos que pasa si utilizamos regularización
+
+```{r}
+x<-chile
+xx<-as.matrix(x[,paste0("casos.",0:14)])
+yy<-x$decesos
+cvfit<-cv.glmnet( xx,yy)
+plot(cvfit)
+```
+
+Si revisamos los coeficientes más relevantes, la mayoría son superiores a una semana. Podemos ver que tienen tanta importancia los coeficientes más recientes como los más lejanos.
+
+```{r}
+coef(cvfit, s="lambda.1se")
+
+```
+
+Se puede ver que la correlación entre el modelo observador y predicho es cerca de .95
+
+```{r}
+pr1<-predict(cvfit, s="lambda.1se",newx = xx)
+cor(pr1, yy)
+```
+
+
+El modelo resulta relativamente lineal para pocos casos, pero tiende a subestimar en el rango superior.
+
+
+```{r}
+ggplot(data.frame(predicho=as.numeric(pr1),observado=yy), aes(x=predicho, y=observado))+geom_point()+geom_abline()+geom_smooth()
+```
+

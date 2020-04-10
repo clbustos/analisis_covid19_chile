@@ -104,7 +104,7 @@ plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2
   gg
 }
 
-prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
+prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","tar1","tar2","tar4")) {
 
   generar.nuevo.forecast<-function(x,prediccion, nombre) {
     ult.dia<-tail(x$dia,1)
@@ -124,7 +124,7 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
     )
   }
 
-  x.exp<-lapply(xx,function(x) {
+  x.exp<-function() {lapply(xx,function(x) {
     x<-x[x$casos>=min.casos,]
     lm.1<-lm(log(casos)~dia,x)
     ult.dia<-x$dia[length(x$dia)]
@@ -139,20 +139,23 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
       pais=x$pais[1]
     )
   })
+  }
 
 
 
-  x.arima<-lapply(xx,function(x) {
+  x.arima<-function() {lapply(xx,function(x) {
     x<-x[x$casos>=min.casos,]
     ult.dia<-x$dia[length(x$dia)]
     aa<-forecast::Arima(log(x$casos), c(1,1,0), include.constant = T)
-
     prediccion<-forecast(aa,h=n.ahead,level=95)
-
     generar.nuevo.forecast(x = x,prediccion = prediccion,nombre="General: ARIMA(1,1,0)+drift")
   })
+  }
 
-  x.tar2<-lapply(xx,function(x) {
+
+
+
+  x.tar2<-function() {lapply(xx,function(x) {
     x<-x[x$casos>=min.casos,]
     ult.dia<-x$dia[length(x$dia)]
     d.casos<-diff(x$casos)
@@ -165,6 +168,8 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
     dias.dif.ahead2<-dias.dif.ahead^2
 
     art2<-Arima(log.diff,order = c(1,0,0), xreg = cbind(d1=dias.dif,d2=dias.dif2))
+    #print(art2)
+     #   print(acf(resid(art2)))
     prediccion<-forecast(art2,h=n.ahead,level=95,xreg=cbind(d1=dias.dif.ahead, d2=dias.dif.ahead2))
     ultimo.caso<-tail(x$casos,1)
 
@@ -180,8 +185,41 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
 
 
   })
-  # Ya que es una cuenta, mejor modelo los casos predichos usando Poisson (imposible que sea negativo)
-  x.tar1<-lapply(xx,function(x) {
+  }
+
+  x.tar4<-function() {lapply(xx,function(x) {
+    x<-x[x$casos>=min.casos,]
+    ult.dia<-x$dia[length(x$dia)]
+    d.casos<-diff(x$casos)
+    d.casos[d.casos==0]<-1
+    log.diff<-log(d.casos)
+    dias.dif<-1:length(log.diff)
+    dias.dif2<-dias.dif^2
+
+    dias.dif.ahead<-(length(log.diff)+1):(length(log.diff)+n.ahead)
+    dias.dif.ahead2<-dias.dif.ahead^2
+
+    art2<-Arima(log.diff,order = c(4,0,0), xreg = cbind(d1=dias.dif,d2=dias.dif2))
+   # print(art2)
+  #  print(acf(resid(art2)))
+    prediccion<-forecast(art2,h=n.ahead,level=95,xreg=cbind(d1=dias.dif.ahead, d2=dias.dif.ahead2))
+    ultimo.caso<-tail(x$casos,1)
+
+    data.frame(
+      dia=c(x$dia, (ult.dia+1):(ult.dia+7)),
+      casos=c(x$casos, ultimo.caso+cumsum(exp(prediccion$mean))),
+      li=c(x$casos, ultimo.caso+cumsum(exp(prediccion$lower))),
+      ls=c(x$casos, ultimo.caso+cumsum(exp(prediccion$upper))),
+      tipo=c(rep("obs", nrow(x)), rep("Casos nuevo: Tendencia + AR(4)", length(prediccion$mean))),
+      pais=x$pais[1]
+    )
+
+
+
+  })
+  }
+
+  x.tar1<-function() {lapply(xx,function(x) {
     x<-x[x$casos>=min.casos,]
     ult.dia<-x$dia[length(x$dia)]
     #log.casos<-diff(log(x$casos))
@@ -213,20 +251,30 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7) {
     )
 
   })
-  res<-list(exp=x.exp,
+  }
+
+
+
+  mod.a.func<-list(exp=x.exp,
             tar1=x.tar1,
             arima=x.arima,
-            tar2=x.tar2
+            tar2=x.tar2,
+            tar4=x.tar4
   )
+  res<-list()
+
+  for(i in modelos) {
+    res[[i]]<-do.call(mod.a.func[[i]], list())
+  }
+
   class(res)<-"prediccion.casos"
   res
 }
 
 
 plot.prediccion.casos<-function(x) {
-  todo.unido<-rbind(do.call(rbind,x$exp),
-                    do.call(rbind,x$arima),
-                    do.call(rbind,x$tar2))
+  x2<-lapply(x,function(xx) {do.call(rbind,xx)})
+  todo.unido<-do.call(rbind, x2)
   todo.unido<-unique(todo.unido)
   ggplot(todo.unido, aes(x=dia, y=casos, ymin=li,ymax=ls,color=tipo))+
     geom_point(size=0.5)+
@@ -265,4 +313,20 @@ leer.pais<-function(x) {
   x2$dia<-1:nrow(x2)
   x2$casos.nuevos<-c(x2$casos[1], diff(x2$casos))
   x2
+}
+
+
+resumen.lm<-function(x) {
+  s1<-summary(x)
+  rr<-list(
+    r2=sprintf("R²: %0.3f , adj R²: %0.3f ",s1$r.squared, s1$adj.r.squared),
+    f=sprintf("F(%d,%d)=%0.3f, p=%s",s1$fstatistic["numdf"], s1$fstatistic["dendf"], s1$fstatistic["value"], format.pval(pf(s1$fstatistic["numdf"], s1$fstatistic["dendf"], s1$fstatistic["value"],lower.tail = F)))
+  )
+  class(rr)<-"resumen.lm"
+  rr
+}
+print.resumen.lm<-function(x) {
+  cat(x$r2)
+  cat("\n")
+  cat(x$f)
 }
