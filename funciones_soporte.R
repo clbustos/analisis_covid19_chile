@@ -22,32 +22,41 @@ predecir.dia.critico.chile<-function() {
 
 #' Permite graficar el avance por país/zona
 #'
+#' La lógica de geom_label_repel la saqué de OpenSalud LAB  (Gracias, Paulo)
 #' @param x base de datos, revisar analisis.R para ver ejemplo
 #' @param min.casos número mínimo de casos a considerar, desde el cual se grafica
 #' @param span.param parámetro de suavizado de curva
 #' @param log.param  si se presenta o no en escala logaritmica el eje Y
 #' @param predicted si se presenta o no la curva exponencial predicha.
 
-plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predicted=TRUE) {
-
-  x<-lapply(x,function(x) {
-    x<-x[x$casos>=min.casos,]
-    x$dia<-1:nrow(x)
-    lm.1<-lm(log(casos)~dia,x)
-    x$pr<-exp(predict(lm.1))
-    x
+plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predicted=TRUE, con.etiqueta=TRUE) {
+  library(ggrepel)
+  x<-lapply(x,function(xx) {
+    xx<-xx[xx$casos>=min.casos,]
+    xx$dia<-1:nrow(xx)
+    lm.1<-lm(log(casos)~dia,xx)
+    xx$pr<-exp(predict(lm.1))
+    xx
   })
-  lm.paises<-sapply(x,function(x) {
-    lm.1<-lm(log(casos)~dia,x)
-    as.numeric(round(100*(exp(coef(lm.1)[2])-1),1))
+
+  x.ultimo<-lapply(x,function(xx) {
+    xx[nrow(xx),,drop=F]
   })
   # Creamos modelos
+    lm.paises<-sapply(x,function(x) {
+        lm.1<-lm(log(casos)~dia,x)
+        as.numeric(round(100*(exp(coef(lm.1)[2])-1),1))
+  })
 
   texto.nota<-paste0(names(lm.paises),": ", as.numeric(lm.paises),"%",collapse=". ")
 
   unido<-do.call(rbind,x )
+  unido.ultimo<-do.call(rbind,x.ultimo)
+  gg<-ggplot(unido, aes(x=dia, y=casos, color=pais))+geom_point(alpha=0.5, size=2)
 
-  gg<-ggplot(unido, aes(x=dia, y=casos, color=pais))+geom_point(alpha=0.5)
+  if(con.etiqueta) {
+    gg<-gg+geom_label_repel(aes(label=pais), data=unido.ultimo)
+  }
 
   #+annotate("text",x=5,y=10000,label="hola")
   if(log.param) {
@@ -56,7 +65,6 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
   if(predicted) {
     gg<-gg+geom_line(aes(x=dia,y=pr),alpha=0.75)
     gg<-gg+labs(caption=texto.nota)
-
   }
   if (!is.null(span.param)) {
     gg<-gg+geom_smooth(span=span.param, alpha=0.75,se = FALSE)
@@ -72,16 +80,27 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
 #' @param span.param parámetro de suavizado de la curva
 #' @param ventana ventana de días para realizar media móvil.
 
-plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2=FALSE) {
+plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2=FALSE, casos.nuevos=FALSE) {
+  if(casos.nuevos) {
+    if(derivada.2) {
+      ylabt="tasa nuevos dia n / tasa dia n-1"
+    } else {
+      ylabt="casos nuevos dia n / casos dia n-1"
+    }
+    } else {
   if(derivada.2) {
     ylabt="tasa dia n / tasa dia n-1"
   } else {
     ylabt="casos dia n / casos dia n-1"
   }
+  }
   x<-lapply(x,function(x) {
     x<-x[x$casos>=min.casos,]
-    dif.log.casos<-c(0,diff(log(x$casos)))
-
+    if(casos.nuevos) {
+      dif.log.casos<-c(0,diff(log(x$casos.nuevos)))
+    } else {
+      dif.log.casos<-c(0,diff(log(x$casos)))
+    }
     if(derivada.2) {
 
       roll.mean<-zoo::rollmean(x=c(0,diff(dif.log.casos)),k=ventana)
@@ -96,7 +115,12 @@ plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2
     #x
   })
   unido<-do.call(rbind,x )
-  gg<-ggplot(unido, aes(x=dia, y=exp(dif.log.casos), color=pais))+geom_point()+ylab(ylabt)+geom_line()
+  unido$es.mas.1<-unido$dif.log.casos!=0
+  if(casos.nuevos) {
+  gg<-ggplot(unido, aes(x=dia, y=exp(dif.log.casos), color=pais))+geom_point(show.legend=FALSE)+ylab(ylabt)+geom_line()
+  } else {
+    gg<-ggplot(unido, aes(x=dia, y=exp(dif.log.casos), color=pais, shape=es.mas.1, group=pais))+geom_point(show.legend=FALSE)+ylab(ylabt)+scale_shape_manual(values=c(4,16))+geom_line()
+  }
   if(!is.null(span.param)) {
     gg<-gg+geom_smooth(span=span.param)
   }
@@ -104,40 +128,75 @@ plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2
   gg
 }
 
-prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","tar1","tar2","tar4")) {
+prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","tar1","tar2","tar4","gompertz"), solo.prediccion=FALSE) {
+  library(nlme)
 
+  generar.tabla.final<-function(x, pred.df) {
+    if(solo.prediccion) {
+      pred.df
+    } else {
+      datos.previos<- data.frame(
+        dia=c(x$dia),
+        casos=c(x$casos),
+        li=c(x$casos),
+        ls=c(x$casos),
+        tipo=rep("obs", nrow(x)),
+        pais=x$pais[1]
+      )
+      rbind(datos.previos, pred.df)
+    }
+  }
   generar.nuevo.forecast<-function(x,prediccion, nombre) {
     ult.dia<-tail(x$dia,1)
-    prediccion.casos.nuevos<-data.frame(
-      fit=exp(prediccion$mean),
-      lwr=as.numeric(exp(prediccion$lower)),
-      upr=as.numeric(exp(prediccion$upper))
-    )
-
-    data.frame(
-      dia=c(x$dia, (ult.dia+1):(ult.dia+7)),
-      casos=c(x$casos, prediccion.casos.nuevos$fit),
-      li=c(x$casos, prediccion.casos.nuevos$lwr),
-      ls=c(x$casos, prediccion.casos.nuevos$upr),
-      tipo=c(rep("obs", nrow(x)), rep(nombre, nrow(prediccion.casos.nuevos))),
+    pred.df<- data.frame(
+      dia=(ult.dia+1):(ult.dia+n.ahead),
+      casos=exp(prediccion$mean),
+      li=as.numeric(exp(prediccion$lower)),
+      ls=as.numeric(exp(prediccion$upper)),
+      tipo=rep(nombre, n.ahead),
       pais=x$pais[1]
     )
+    generar.tabla.final(x, pred.df)
+
   }
+
+  x.gompertz<-function() {lapply(xx,function(x) {
+    library(propagate)
+    library(R.cache)
+    predictNLS.cache<-addMemoization(predictNLS)
+    x<-x[x$casos>=min.casos,]
+    gomp<-nls(casos.nuevos~SSgompertz(dia,Asym,b2,b3), data = x)
+    ult.dia<-tail(x$dia,1)
+    ultimo.caso<-tail(x$casos,1)
+    pr<-predictNLS.cache(gomp, newdata=data.frame(dia= (ult.dia+1):(ult.dia+n.ahead)  ), interval = "prediction")
+    pred.df<-data.frame(
+      dia=(ult.dia+1):(ult.dia+n.ahead),
+      casos=ultimo.caso+pr$summary$Prop.Mean.1,
+      li=ultimo.caso+pr$summary$`Sim.2.5%`,
+      ls=ultimo.caso+pr$summary$`Sim.97.5%`,
+      tipo=rep("Casos nuevos: Gompertz", n.ahead),
+      pais=x$pais[1]
+    )
+    generar.tabla.final(x, pred.df)
+
+  })}
+
 
   x.exp<-function() {lapply(xx,function(x) {
     x<-x[x$casos>=min.casos,]
     lm.1<-lm(log(casos)~dia,x)
     ult.dia<-x$dia[length(x$dia)]
-    pr<-predict(lm.1, newdata=data.frame(dia= (ult.dia+1):(ult.dia+7)  ),interval="prediction")
+    pr<-predict(lm.1, newdata=data.frame(dia= (ult.dia+1):(ult.dia+n.ahead)  ),interval="prediction")
     prediccion<-data.frame(exp(pr))
-    data.frame(
-      dia=c(x$dia, (ult.dia+1):(ult.dia+7)),
-      casos=c(x$casos, prediccion$fit),
-      li=c(x$casos, prediccion$lwr),
-      ls=c(x$casos, prediccion$upr),
-      tipo=c(rep("obs", nrow(x)), rep("General: Exponencial", nrow(prediccion))),
+    pred.df<-data.frame(
+      dia=(ult.dia+1):(ult.dia+n.ahead),
+      casos=prediccion$fit,
+      li=prediccion$lwr,
+      ls=prediccion$upr,
+      tipo=rep("General: Exponencial", n.ahead),
       pais=x$pais[1]
     )
+    generar.tabla.final(x, pred.df)
   })
   }
 
@@ -173,14 +232,15 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
     prediccion<-forecast(art2,h=n.ahead,level=95,xreg=cbind(d1=dias.dif.ahead, d2=dias.dif.ahead2))
     ultimo.caso<-tail(x$casos,1)
 
-    data.frame(
-      dia=c(x$dia, (ult.dia+1):(ult.dia+7)),
-      casos=c(x$casos, ultimo.caso+cumsum(exp(prediccion$mean))),
-      li=c(x$casos, ultimo.caso+cumsum(exp(prediccion$lower))),
-      ls=c(x$casos, ultimo.caso+cumsum(exp(prediccion$upper))),
-      tipo=c(rep("obs", nrow(x)), rep("Casos nuevo: Tendencia + AR(1)", length(prediccion$mean))),
+    pred.df<-data.frame(
+      dia=(ult.dia+1):(ult.dia+n.ahead),
+      casos=ultimo.caso+cumsum(exp(prediccion$mean)),
+      li=ultimo.caso+cumsum(exp(prediccion$lower)),
+      ls=ultimo.caso+cumsum(exp(prediccion$upper)),
+      tipo=rep("Casos nuevo: Tendencia + AR(1)", n.ahead),
       pais=x$pais[1]
     )
+    generar.tabla.final(x,pred.df)
 
 
 
@@ -205,17 +265,15 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
     prediccion<-forecast(art2,h=n.ahead,level=95,xreg=cbind(d1=dias.dif.ahead, d2=dias.dif.ahead2))
     ultimo.caso<-tail(x$casos,1)
 
-    data.frame(
-      dia=c(x$dia, (ult.dia+1):(ult.dia+7)),
-      casos=c(x$casos, ultimo.caso+cumsum(exp(prediccion$mean))),
-      li=c(x$casos, ultimo.caso+cumsum(exp(prediccion$lower))),
-      ls=c(x$casos, ultimo.caso+cumsum(exp(prediccion$upper))),
-      tipo=c(rep("obs", nrow(x)), rep("Casos nuevo: Tendencia + AR(4)", length(prediccion$mean))),
+    pred.df<-data.frame(
+      dia=(ult.dia+1):(ult.dia+n.ahead),
+      casos=ultimo.caso+cumsum(exp(prediccion$mean)),
+      li=ultimo.caso+cumsum(exp(prediccion$lower)),
+      ls=ultimo.caso+cumsum(exp(prediccion$upper)),
+      tipo=rep("Casos nuevo: Tendencia + AR(4)",n.ahead),
       pais=x$pais[1]
     )
-
-
-
+    generar.tabla.final(x,pred.df)
   })
   }
 
@@ -241,15 +299,17 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
       lwr=exp(pr.resid.0$pred+pr.trend.0$fit  - 1.96*(pr.resid.0$se+pr.trend.0$se.fit)),
       upr=exp(pr.resid.0$pred+pr.trend.0$fit  + 1.96*(pr.resid.0$se+pr.trend.0$se.fit))
     )
-    data.frame(
-      dia=c(x$dia, (ult.dia+1):(ult.dia+7)),
-      casos=c(x$casos, tail(x$casos,1)+cumsum(prediccion.casos.nuevos$fit)),
-      li=c(x$casos, tail(x$casos,1)+cumsum(prediccion.casos.nuevos$lwr)),
-      ls=c(x$casos, tail(x$casos,1)+cumsum(prediccion.casos.nuevos$upr)),
-      tipo=c(rep("obs", nrow(x)), rep("T+AR(1)", nrow(prediccion.casos.nuevos))),
+    ult.caso<-tail(x$casos,1)
+
+    pred.df<-data.frame(
+      dia=(ult.dia+1):(ult.dia+n.ahead),
+      casos = ult.caso+cumsum(prediccion.casos.nuevos$fit),
+      li    = ult.caso+cumsum(prediccion.casos.nuevos$lwr),
+      ls    = ult.caso+cumsum(prediccion.casos.nuevos$upr),
+      tipo  = rep("casos nuevos (met ant):T+AR(1)", n.ahead),
       pais=x$pais[1]
     )
-
+    generar.tabla.final(x,pred.df)
   })
   }
 
@@ -259,7 +319,8 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
             tar1=x.tar1,
             arima=x.arima,
             tar2=x.tar2,
-            tar4=x.tar4
+            tar4=x.tar4,
+            gompertz=x.gompertz
   )
   res<-list()
 
@@ -315,6 +376,22 @@ leer.pais<-function(x) {
   x2
 }
 
+tasa.periodos<-function(x,min.casos=5) {
+  library(rms)
+  totales<-sapply(x,function(xx) {tail(xx$casos,1)})
+  tp<-t(sapply(x,function(xx) {
+    xx<-xx[xx$casos>=min.casos,]
+    xx$dia.2<-1:nrow(xx)
+    ols.1<-ols(log1p(casos.nuevos)~pol(dia.2,2),xx)
+    coef(ols.1)
+  }))
+  tp.2<-data.frame(tp)
+  tp.2$zona<-rownames(tp.2)
+  tp.2$totales<-totales
+  colnames(tp.2)<-c("int","l","c","zona","total")
+  tp.2
+}
+
 
 resumen.lm<-function(x) {
   s1<-summary(x)
@@ -325,6 +402,8 @@ resumen.lm<-function(x) {
   class(rr)<-"resumen.lm"
   rr
 }
+
+
 print.resumen.lm<-function(x) {
   cat(x$r2)
   cat("\n")
