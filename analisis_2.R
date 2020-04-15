@@ -6,6 +6,9 @@ library(ggplot2)
 library(nlme)
 library(propagate)
 library(rms)
+library(gganimate)
+library(ggrepel)
+library(R.cache)
 source("funciones_soporte.R")
 
 
@@ -34,5 +37,10 @@ leer.datos<-function(x,zonas) {
 }
 
 datos.casos.total<-datos.casos<-leer.datos(xlsx.casos,zonas.chile)
-
 datos.decesos.total<-datos.decesos<-leer.datos(xlsx.decesos,zonas.chile)
+
+
+# Para hacer la animación de tasa periodos, tengo que ir por la base
+
+plot.tasa.casos.animado.cache<-addMemoization(plot.tasa.casos.animado)
+

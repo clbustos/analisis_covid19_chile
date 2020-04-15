@@ -409,3 +409,18 @@ print.resumen.lm<-function(x) {
   cat("\n")
   cat(x$f)
 }
+
+
+plot.tasa.casos.animado<-function(inicio, xlsx.base,zonas, paleta) {
+
+  rr<-lapply(inicio:tail(xlsx.base$dia,1),function(dia) {
+    datos.casos.parc<-xlsx.base[xlsx.base$dia<=dia,]
+    lp.p<-leer.datos(datos.casos.parc, zonas)
+    tp.l<-tasa.periodos(lp.p,min.casos = 0)
+    tp.l$dia<-convertToDate(tail(datos.casos.parc$fecha,1))
+    tp.l
+  })
+
+  rr1<-do.call(rbind,rr)
+  ggplot(rr1,aes(x=l,y=c,label=zona,color=zona))+geom_point()+paleta+geom_label()+geom_hline(yintercept = 0,alpha=0.5)+geom_vline(xintercept = 0,alpha=0.5)+labs(title="Dia: {frame_time}", x="lineal",y="cuadratico")+transition_time(dia)
+}

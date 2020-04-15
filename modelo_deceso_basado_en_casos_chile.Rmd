@@ -1,0 +1,95 @@
+---
+title: "Modelo para decesos basado en casos, Covid 19 - Chile"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r setup}
+source("funciones_soporte.R")
+library(ggplot2)
+library(glmnet)
+
+library(rms)
+library(openxlsx)
+library(dynlm)
+chile.casos<-diff(c(0,read.xlsx("casos_chile_regiones.xlsx")$total))
+chile.decesos<-diff(c(0, read.xlsx("casos_chile_regiones.xlsx",sheet = 2)$total))
+chile<-data.frame(
+  decesos=chile.decesos,
+  casos.0=chile.casos
+)
+n<-nrow(chile)
+  for(i in 1:22) {
+    chile[[paste0("casos.",i)]]<-c(rep(0,i), chile.casos[1:(n-i)])
+  }
+```
+
+La serie de Chile tiene datos para  `r n` días. Si calculamos las correlaciones entre el número de casos y decesos por día, podemos ver que la máxima correlación se observa con un retraso de 5-7 días, siendo alta alta también entre los días 11-16 y en el día 21.
+```{r}
+c1<-cor(chile)[1,-1]
+plot(0:22,c1 )
+```
+
+# Método 1: Modelo dinámico linear
+
+Podemos hacer un modelo un poco bruto, en el cual modelamos el número de decesos actuales utilizando la cantidad de casos nuevos con lags de 0 a 14, más un autoregresivo sobre el mismo valor de decesos. Claramente, es un modelo sobreajustado.
+```{r}
+chile.casos.ts<-ts(chile.casos)
+chile.decesos.ts<-ts(chile.decesos)
+dyn1<-dynlm(chile.decesos.ts~L(chile.decesos.ts)+L(chile.casos.ts,0:14),chile)
+summary(dyn1)
+```
+
+Si analizamos supuestos, vemos que la relación no es lineal, con un claro patrón en U de los residuos, y que hay un leve aumento de varianza en los valores altos predichos. También podemos observar que existen residuos importantes, en valores con alto leverage.
+```{r}
+plot(dyn1)
+```
+
+Si realizamos un análisis de validación con bootstrap, es muy claro el nivel de sobreajuste que tiene el modelo.
+```{r}
+x1<-dyn1$model
+library(rms)
+ols.1<-ols(chile.decesos.ts~.,x1,x=T,y=T)
+validate(ols.1)
+```
+
+
+## Regularización
+
+```{r}
+xx<-as.matrix(x1)[,-1]
+yy<-as.numeric(x1[,1])
+cvfit<-cv.glmnet( xx,yy)
+plot(cvfit)
+```
+Si observamos los coeficientes significativos, podemos ver que correponden al lag 1, otros cercanos a la semana y otros cercanos a las dos semanas.
+```{r}
+coef(cvfit, s="lambda.1se")
+```
+
+El R²=0.82  es más bajo que el del modelo completo.
+```{r}
+pr1<-predict(cvfit, s="lambda.1se",newx = xx)
+cor(pr1, yy)^2
+```
+
+
+El modelo tiene un problema similar al del saturado, con subestimación de valores bajos y altos.
+
+
+```{r}
+ggplot(data.frame(predicho=as.numeric(pr1),observado=yy), aes(x=predicho, y=observado))+geom_point()+geom_abline()+geom_smooth()
+```
+
+Probemos a validar el modelo previo. Podemos ver que el optimismo es mucho menor, con un R² positivo, lo que nos indica 
+
+```{r}
+
+ols.2<-ols(decesos~casos.1+casos.6+casos.8+casos.12+casos.13,chile,x=T,y=T)
+validate(ols.2)
+```
+
+
