@@ -128,7 +128,41 @@ plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2
   gg
 }
 
-prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","tar1","tar2","tar4","gompertz"), solo.prediccion=FALSE) {
+
+prediccion.por.zonas<-function(min.corte,x, n.ahead=7,modelos=c("arima","tar2")) {
+  ndatos.pais<-names(min.corte)
+  names(ndatos.pais)<-ndatos.pais
+
+  pred1<-lapply(ndatos.pais,function(nr) {
+    #print(nr)
+    mc<-min.corte[[nr]]
+    x<-prediccion.casos(x[(nr)],min.casos = mc,n.ahead = n.ahead, modelos = modelos)
+    x$tar1<-NULL
+    x2<-lapply(x,function(xx.0) {xx<-tail(xx.0[[1]],n.ahead);xx[,1]<-1:n.ahead;xx})
+    do.call(rbind,x2)
+  })
+
+  salida.pred<-do.call(rbind, pred1)
+  suma.pred<-aggregate(salida.pred$casos, list(dia=salida.pred$dia, tipo=salida.pred$tipo), sum)
+
+
+
+
+  sec.basica<-rbind(data.frame(
+    dia=x$total$dia,
+    fecha=x$total$fecha,
+    tipo="observado",
+    casos=x$total$casos
+  ), data.frame(
+    dia=tail(x$total$dia,1)+suma.pred$dia,
+    fecha=tail(x$total$fecha,1)+suma.pred$dia,
+    tipo=suma.pred$tipo,
+    casos=suma.pred$x
+  ))
+  sec.basica
+}
+
+prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","tar1","tar2","tar4","cuad"), solo.prediccion=FALSE, verbose=FALSE) {
   library(nlme)
 
   generar.tabla.final<-function(x, pred.df) {
@@ -183,6 +217,9 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
 
 
   x.exp<-function() {lapply(xx,function(x) {
+    if(verbose) {
+      cat("EXP")
+    }
     x<-x[x$casos>=min.casos,]
     lm.1<-lm(log(casos)~dia,x)
     ult.dia<-x$dia[length(x$dia)]
@@ -200,9 +237,34 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
   })
   }
 
+  x.cuad<-function() {lapply(xx,function(x) {
+    if(verbose) {
+      cat("CUAD+AR(2)")
+    }
+    x<-x[x$casos>=min.casos,]
+    dias<-cbind(dia=x$dia,dia2=x$dia^2)
+    aa<-forecast::Arima(x$casos, c(2,0,0), include.constant = T,xreg = dias)
+    ult.dia<-tail(x$dia,1)
+    sec.pred<-ult.dia+(1:n.ahead)
+    prediccion<-forecast(aa,h=n.ahead,level=95,xreg =cbind(dia=sec.pred    ,  dia2=sec.pred^2  ))
+
+    pred.df<-data.frame(
+      dia=(ult.dia+1):(ult.dia+n.ahead),
+      casos=prediccion$mean,
+      li=unname(prediccion$lower),
+      ls=unname(prediccion$upper),
+      tipo=rep("General: Cuadrático + AR(2)", n.ahead),
+      pais=x$pais[1]
+    )
+    generar.tabla.final(x,pred.df)
+
+  })}
 
 
   x.arima<-function() {lapply(xx,function(x) {
+    if(verbose) {
+      cat("ARIMA")
+    }
     x<-x[x$casos>=min.casos,]
     ult.dia<-x$dia[length(x$dia)]
     aa<-forecast::Arima(log(x$casos), c(1,1,0), include.constant = T)
@@ -215,6 +277,9 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
 
 
   x.tar2<-function() {lapply(xx,function(x) {
+    if(verbose) {
+      cat("TAR2")
+    }
     x<-x[x$casos>=min.casos,]
     ult.dia<-x$dia[length(x$dia)]
     d.casos<-diff(x$casos)
@@ -248,6 +313,9 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
   }
 
   x.tar4<-function() {lapply(xx,function(x) {
+    if(verbose) {
+      cat("TAR4")
+    }
     x<-x[x$casos>=min.casos,]
     ult.dia<-x$dia[length(x$dia)]
     d.casos<-diff(x$casos)
@@ -320,7 +388,8 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
             arima=x.arima,
             tar2=x.tar2,
             tar4=x.tar4,
-            gompertz=x.gompertz
+            gompertz=x.gompertz,
+            cuad=x.cuad
   )
   res<-list()
 

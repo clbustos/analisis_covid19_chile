@@ -27,7 +27,7 @@ n<-nrow(chile)
   }
 ```
 
-La serie de Chile tiene datos para  `r n` días. Si calculamos las correlaciones entre el número de casos y decesos por día, podemos ver que la máxima correlación se observa con un retraso de 5-7 días, siendo alta alta también entre los días 11-16 y en el día 21.
+La serie de Chile tiene datos para  `r n` días. Si calculamos las correlaciones entre el número de casos y decesos por día, podemos ver que la máxima correlación se observa con un retraso de 6-8 días, descendiendo desde ese unto,
 ```{r}
 c1<-cor(chile)[1,-1]
 plot(0:22,c1 )
@@ -70,7 +70,7 @@ Si observamos los coeficientes significativos, podemos ver que correponden al la
 coef(cvfit, s="lambda.1se")
 ```
 
-El R²=0.82  es más bajo que el del modelo completo.
+El R²  es más bajo que el del modelo completo.
 ```{r}
 pr1<-predict(cvfit, s="lambda.1se",newx = xx)
 cor(pr1, yy)^2
@@ -81,7 +81,7 @@ El modelo tiene un problema similar al del saturado, con subestimación de valor
 
 
 ```{r}
-ggplot(data.frame(predicho=as.numeric(pr1),observado=yy), aes(x=predicho, y=observado))+geom_point()+geom_abline()+geom_smooth()
+ggplot(data.frame(predicho=as.numeric(pr1),observado=yy), aes(x=predicho, y=observado))+geom_point()+geom_abline()+geom_smooth()+xlim(0,12)
 ```
 
 Probemos a validar el modelo previo. Podemos ver que el optimismo es mucho menor, con un R² positivo, lo que nos indica 

@@ -24,8 +24,11 @@ calcular.mse<-function(x,y) {
   mean((log(x$casos)-log(y$casos))^2)
 }
 
-dato.al.28.3<-datos.pais$Chile[datos.pais$Chile$fecha<=43917,]
-dato.al.3.4<-datos.pais$Chile[datos.pais$Chile$fecha<=43924,]
+f.inicial <- 43928
+f.final   <- 43935
+
+dato.a.inicial<-datos.pais$Chile[datos.pais$Chile$fecha<=f.inicial,]
+dato.a.final<-datos.pais$Chile[datos.pais$Chile$fecha<=f.final,]
 
 obtener.prediccion<-function(x.parc,x.comp,min.casos) {
   dato.obs<-data.frame(
