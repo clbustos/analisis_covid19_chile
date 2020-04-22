@@ -84,12 +84,33 @@ El modelo tiene un problema similar al del saturado, con subestimación de valor
 ggplot(data.frame(predicho=as.numeric(pr1),observado=yy), aes(x=predicho, y=observado))+geom_point()+geom_abline()+geom_smooth()+xlim(0,12)
 ```
 
-Probemos a validar el modelo previo. Podemos ver que el optimismo es mucho menor, con un R² positivo, lo que nos indica 
+Probemos a validar el modelo previo.El R² es mejor que el del modelo con múltiples  indicadores.
+
 
 ```{r}
 
-ols.2<-ols(decesos~casos.1+casos.6+casos.8+casos.12+casos.13,chile,x=T,y=T)
+ols.2<-ols(decesos~casos.0+casos.1+casos.6+casos.7+casos.8+casos.12,chile,x=T,y=T)
 validate(ols.2)
 ```
+
+## Modelo Poisson
+
+
+```{r}
+
+pois.1<-glm(decesos~casos.0+casos.1+casos.6+casos.7+casos.8+casos.12,chile,x=T,y=T,family="poisson")
+summary(pois.1)
+```
+```{r}
+cor(predict(pois.1,type="response"), chile$decesos)^2
+```
+
+  
+```{r}
+ggplot(data.frame(pr=predict(pois.1,type="response"), obs=chile$decesos), aes(x=pr,y=obs))+geom_point()+geom_smooth()+geom_abline()
+
+```
+
+
 
 

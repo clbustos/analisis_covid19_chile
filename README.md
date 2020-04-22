@@ -28,6 +28,10 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 16/04/2020: https://rpubs.com/clbustos/600343
 * 17/04/2020: https://rpubs.com/clbustos/600797
 * 18/04/2020: https://rpubs.com/clbustos/601204
+* 19/04/2020: https://rpubs.com/clbustos/601508
+* 20/04/2020: https://rpubs.com/clbustos/602149
+* 21/04/2020: https://rpubs.com/clbustos/602771
+* 22/04/2020: https://rpubs.com/clbustos/603301
 
 ## Pruebas del modelo predictivo:
 
