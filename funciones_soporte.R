@@ -29,12 +29,19 @@ predecir.dia.critico.chile<-function() {
 #' @param log.param  si se presenta o no en escala logaritmica el eje Y
 #' @param predicted si se presenta o no la curva exponencial predicha.
 
-plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predicted=TRUE, con.etiqueta=TRUE) {
+plot.avance.pais<-function(x, nvar='casos', min.casos=5, span.param=0.40, log.param=T, predicted=TRUE, con.etiqueta=TRUE) {
   library(ggrepel)
+
   x<-lapply(x,function(xx) {
-    xx<-xx[xx$casos>=min.casos,]
+
+    xx$y<-xx[[nvar]]
+    xx<-xx[xx$y>=min.casos,]
     xx$dia<-1:nrow(xx)
-    lm.1<-lm(log(casos)~dia,xx)
+    if(log.param) {
+      lm.1<-lm(log(y)~dia,xx)
+    } else {
+      lm.1<-lm(y~dia,xx)
+    }
     xx$pr<-exp(predict(lm.1))
     xx
   })
@@ -44,7 +51,14 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
   })
   # Creamos modelos
     lm.paises<-sapply(x,function(x) {
-        lm.1<-lm(log(casos)~dia,x)
+      if(log.param) {
+        lm.1<-lm(log(y)~dia,x)
+
+      }
+      else {
+        lm.1<-lm(y~dia,x)
+
+      }
         as.numeric(round(100*(exp(coef(lm.1)[2])-1),1))
   })
 
@@ -52,7 +66,7 @@ plot.avance.pais<-function(x, min.casos=5, span.param=0.40, log.param=T, predict
 
   unido<-do.call(rbind,x )
   unido.ultimo<-do.call(rbind,x.ultimo)
-  gg<-ggplot(unido, aes(x=dia, y=casos, color=pais))+geom_point(alpha=0.5, size=2)
+  gg<-ggplot(unido, aes(x=dia, y=y, color=pais))+geom_point(alpha=0.5, size=2)
 
   if(con.etiqueta) {
     gg<-gg+geom_label_repel(aes(label=pais), data=unido.ultimo)

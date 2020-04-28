@@ -1,0 +1,180 @@
+---
+title: "Prueba modelo predictivo (16 de Abril a 23 de Abril)"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+```{r setup,echo=F, include=FALSE}
+source("analisis_3.R")
+library(ggplot2)
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+f.inicial <- 43936
+f.final   <- 43943
+```
+
+Todo modelo predictivo debe probarse con datos reales, para determinar su validez. Una forma de medir el grado de error es el error medio cuadrático, que se calcula
+
+$$ 
+EMC= \sum_i^k \frac{(y_i-\hat{y_i})^2}{n}
+$$
+
+Donde $y_i$ es el dato observado en el momento $i$, entanto que $\hat{y_i}$ es valor predicho. En nuestros ejemplos, como se calculará el EMC sobre los valores al logaritmo.
+
+Durante esta semana, se probó un modelo cuadrático sobre los datos en bruto, con una estructura de autocorrelación AR(2).
+
+## Modelos de casos totales
+
+
+Probaremos la adecuación de los tres modelos, que usamos hasta el momento - general cuadrático + AR(2), casos nuevos + AR(1), casos nuevos + AR(4), usando el modelo calculado el día [16 de Abril](https://rpubs.com/clbustos/596636). 
+
+Se debe considerar que como los reportes del MINSAL se realizan con un día de retraso, realmente estamos usando los datos del día 15 para predecir hasta el 22.
+
+```{r}
+data.frame(inicio=convertToDate(f.inicial),
+           final=convertToDate(f.final))
+```
+
+
+Se puede ver que los modelos T+AR(1) y T+AR(4) subestiman de forma sistemática, pero mantienen siempre su intervalo de confianza. En cambio, el modelo cuadrático siempre sobrestima en menor cantidad, pero no logra mantener su intervalo de confianza pasado dos días.
+
+```{r}
+calcular.mse<-function(x,y) {
+  mean((log(x$casos)-log(y$casos))^2)
+}
+
+
+
+dato.a.inicial<-datos.casos$total[datos.casos$total$fecha <= f.inicial,]
+dato.a.final<-datos.casos$total[datos.casos$total$fecha   <= f.final,]
+
+obtener.prediccion<-function(x.comp,min.casos, n.ahead=7) {
+  n.comp<-nrow(x.comp)
+  x.parc<-x.comp[1:(n.comp-n.ahead), ]
+  
+  dato.obs<-data.frame(
+    dia=x.comp$dia,
+    casos=x.comp$casos,
+    li=x.comp$casos, 
+    ls=x.comp$casos,
+    tipo="Observado",
+    pais="Chile"
+)
+  prediccion<-prediccion.casos(list(Chile=x.parc),min.casos = min.casos, modelos = c("tar2", "tar4","cuad"),n.ahead = n.ahead)
+  out<-list()
+  out$dato.obs<-dato.obs
+  out$dato.obs.parc<-tail(x.comp,n.ahead)
+  out$p.tar21<-tail(prediccion$tar2$Chile,n.ahead)
+  out$p.tar4 <-tail(prediccion$tar4$Chile,n.ahead)
+  out$p.cuad<-tail(prediccion$cuad$Chile,n.ahead)
+  out$para.ver<-rbind(out$dato.obs, out$p.tar21,out$p.tar4,out$p.cuad)
+  
+  out
+}
+
+pred.50<-obtener.prediccion(dato.a.final, 50)
+
+ggplot(pred.50$para.ver, aes(x=dia, y=casos, color=tipo, ymin=li, ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+geom_hline(yintercept = 50)+scale_y_continuous(trans="log10",limits = c(5000,15000))+xlim(c(25,53))
+```
+
+El MSE de AR(4) presenta mayor MSE que AR(1), lo que revierte lo que ocurrió la semana pasada. El modelo cuadrático prácticamente tiene la mitad del error de los otros modelos. 
+
+```{r}
+data.frame("T+AR(1)"=calcular.mse(pred.50$dato.obs.parc, pred.50$p.tar21),
+           "T+AR(4)"=calcular.mse(pred.50$dato.obs.parc, pred.50$p.tar4),
+           "Cuadrático"=calcular.mse(pred.50$dato.obs.parc, pred.50$p.cuad)
+           )
+
+```
+
+
+¿Qué pasaría si hubiesemos considerado solo desde el caso 250 en adelante, como hace dos semanas? Se puede ver que habríamos caído fuera del intervalo de confianza para las predicciones de T+AR(4). Además, el modelo exponencial también hubiera fallado en su intervalo de confianza, también sobrestimando.
+
+
+
+```{r}
+
+pred.250<-obtener.prediccion(dato.a.final, 250)
+
+ggplot(pred.250$para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+geom_hline(yintercept = 250)+scale_y_continuous(trans="log10",limits = c(5000,15000))+xlim(c(25,53))
+
+```
+
+Es interesante notar que pese a la ruptura del intervalo de confianza, los MSE son menores para todos los modelos. En particular, T+AR(1) presenta un muy bajo MSE.
+
+```{r}
+data.frame("T+AR(1)"=calcular.mse(pred.250$dato.obs.parc, pred.250$p.tar21),
+           "T+AR(4)"=calcular.mse(pred.250$dato.obs.parc, pred.250$p.tar4),
+           "Cuadrático"=calcular.mse(pred.250$dato.obs.parc, pred.50$p.cuad)
+           )
+
+```
+
+Si utilizamos el corte del periodo anterior, con 20 casos, los modelos T+AR(1) y T+AR(4) siguen subestimando de forma ssistemática, fallando los intervalos de confianza para los dos últimos días, en tanto que el modelo cuadrático sigue sobreestimando fallando su intervalo a los dos días.
+```{r}
+
+pred.20<-obtener.prediccion(dato.a.final, 20)
+ggplot(pred.20$para.ver, aes(x=dia, y=casos, color=tipo, ymin=li,ymax=ls))+geom_point()+geom_line()+geom_ribbon(alpha=0.1)+geom_hline(yintercept = 20)+scale_y_continuous(trans="log10",limits = c(5000,15000))+xlim(c(25,53))
+```
+
+Los errores con este ajuste suben, aunque el cuadrático se mantiene estable, cercano a 0.003.
+
+```{r}
+data.frame("T+AR(1)"=calcular.mse(pred.20$dato.obs.parc, pred.20$p.tar21),
+           "T+AR(4)"=calcular.mse(pred.20$dato.obs.parc, pred.20$p.tar4),
+           "Cuadrático"=calcular.mse(pred.20$dato.obs.parc, pred.20$p.cuad)
+           )
+
+```
+
+Tanto para AR(1) como para AR(4), podemos ver que la predicción subestima sistemáticamente el valor total, en  tanto que el cuadrático sobreestima, siendo sus intervalos de confianza erróneos, pero siempre con menor error cuadrático.
+
+## Predicción por regiones
+
+Durante las últimas semanas hemos probado un modelo de predicción que suma los resultados parciales por región. Para cada región se elige un punto de corte distinto, el cual se puede consultar en el código a continuación
+
+```{r}
+min.corte<-list(
+    "Arica.y.Parinacota"=10,
+    "Tarapacá"=10,
+    "Antofagasta"=10,
+    "Atacama"=2,
+    "Coquimbo"=10,
+    "Valparaíso"=10,
+    "Metropolitana"=50,
+    "O’Higgins"=10,
+    "Maule"=10,
+    "Ñuble"=20,
+    "Biobío"=10,
+    "Araucanía"=10,
+    "Los.Ríos"=20,
+    "Los.Lagos"=20,
+    "Aysén"=2,
+    "Magallanes"=10)
+
+dc.inicio<-lapply(datos.casos,function(x) {x[x$fecha<=f.inicial,]})
+dc.final<-lapply(datos.casos,function(x) {x[x$fecha<=f.final,]})
+
+ppz.inic<-prediccion.por.zonas(min.corte,dc.inicio,n.ahead = 7, modelos = c("tar2","cuad"))
+obs<-dato.a.final[dato.a.final$fecha>=f.inicial+1 & dato.a.final$fecha<=f.final,]
+```
+
+Se observamos la serie posterior, con detalle, podemos ver que AR(1) tiene un ajuste muy bueno a los datos, en tanto que el modelo exponencial tiende, nuevamente, a sobreestimar.
+```{r}
+ggplot(rbind(ppz.inic, data.frame(tipo="observado",obs[,c("dia","fecha","casos")])), aes(x=dia,y=casos, color=tipo))+geom_line()+scale_y_continuous(trans="log10",limits = c(5000,15000))+xlim(c(25,53))
+```
+
+El MSE del TAR regional es extremadamente bueno, y el modelo lineal cuadrático, si bien un poco  inferior,sigue superando en dos órdenes de magnitud la predicción del modelo general.
+```{r}
+
+data.frame("Suma regional T+AR(1)"=calcular.mse( obs, ppz.inic[ppz.inic$tipo=="Casos nuevo: Tendencia + AR(1)",]),
+           "Suma regional Lineal cuadrático"=calcular.mse(obs, ppz.inic[ppz.inic$tipo=="General: Cuadrático + AR(2)",])
+           )
+```
+
+
+
+## Conclusión
+
+Durante la próxima semana, la predicción se seguirá realizará usando un modelo que parta del día 50. Se eliminará el modelo ARIMA, ya que no muestra ser útil. Se destaca el buen desempeño del modelo por regiones, que en el peor de los casos es un poco peor que el modelo de serie total, y en el mejor - como ahora - lo supera en órdenes de magnitud.

@@ -89,7 +89,7 @@ Probemos a validar el modelo previo.El R² es mejor que el del modelo con múlti
 
 ```{r}
 
-ols.2<-ols(decesos~casos.0+casos.1+casos.6+casos.7+casos.8+casos.12,chile,x=T,y=T)
+ols.2<-ols(decesos~casos.0+casos.8+casos.12,chile,x=T,y=T)
 validate(ols.2)
 ```
 
@@ -98,7 +98,7 @@ validate(ols.2)
 
 ```{r}
 
-pois.1<-glm(decesos~casos.0+casos.1+casos.6+casos.7+casos.8+casos.12,chile,x=T,y=T,family="poisson")
+pois.1<-glm(decesos~casos.0+casos.8+casos.12,chile,x=T,y=T,family="poisson")
 summary(pois.1)
 ```
 ```{r}

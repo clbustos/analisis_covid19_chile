@@ -32,11 +32,18 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 20/04/2020: https://rpubs.com/clbustos/602149
 * 21/04/2020: https://rpubs.com/clbustos/602771
 * 22/04/2020: https://rpubs.com/clbustos/603301
+* 23/04/2020:
+* 24/04/2020:
+* 25/04/2020:
+* 26/04/2020: https://rpubs.com/clbustos/605437
+* 27/04/2020: https://rpubs.com/clbustos/605968
+* 28/04/2020: https://rpubs.com/clbustos/606443
 
 ## Pruebas del modelo predictivo:
 
-* 27 de Marzo al 3 de Abril: https://rpubs.com/clbustos/594816
-* 8 de Abril al 15 de Abril: https://rpubs.com/clbustos/600098
+* 27 de Marzo al 3 de Abril:  https://rpubs.com/clbustos/594816
+* 8 de Abril al 15 de Abril:  https://rpubs.com/clbustos/600098
+* 16 de Abril al 23 de Abril: https://rpubs.com/clbustos/603900
 
 
 ## Análisis de decesos en función de los casos (experimental)
