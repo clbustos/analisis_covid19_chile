@@ -7,8 +7,10 @@ editor_options:
   chunk_output_type: inline
 ---
 
-```{r setup}
+```{r setup, include=FALSE}
 source("funciones_soporte.R")
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+
 library(ggplot2)
 library(glmnet)
 
@@ -27,10 +29,12 @@ n<-nrow(chile)
   }
 ```
 
-La serie de Chile tiene datos para  `r n` días. Si calculamos las correlaciones entre el número de casos y decesos por día, podemos ver que la máxima correlación se observa con un retraso de 6-8 días, descendiendo desde ese unto,
 ```{r}
 c1<-cor(chile)[1,-1]
-plot(0:22,c1 )
+colores<-numeric(length(c1))
+colores[which.max(c1)]<-1
+
+plot(0:22,c1 ,col=colores+1)
 ```
 
 # Método 1: Modelo dinámico linear
@@ -67,7 +71,7 @@ plot(cvfit)
 ```
 Si observamos los coeficientes significativos, podemos ver que correponden al lag 1, otros cercanos a la semana y otros cercanos a las dos semanas.
 ```{r}
-coef(cvfit, s="lambda.1se")
+(coef.s0<-coef(cvfit, s="lambda.1se"))
 ```
 
 El R²  es más bajo que el del modelo completo.
@@ -88,17 +92,30 @@ Probemos a validar el modelo previo.El R² es mejor que el del modelo con múlti
 
 
 ```{r}
-
-ols.2<-ols(decesos~casos.0+casos.8+casos.12,chile,x=T,y=T)
+coef.rel<-which(as.logical(coef.s0!=0))[-1]
+xx.l<-data.frame(xx[,coef.rel],yy=yy)
+ols.2<-ols(yy~., xx.l,x=T,y=T)
 validate(ols.2)
 ```
 
 ## Modelo Poisson
 
+Primero, probemos un modelo Poisson con todos los coeficientes
+```{r}
+
+pois.0<-glm(yy~xx ,chile,x=T,y=T,family="poisson")
+summary(pois.0)
+```
+La predicción es bastante buena!
+
+```{r}
+ggplot(data.frame(pr=predict(pois.0,type="response"), obs=yy), aes(x=pr,y=obs))+geom_point()+geom_smooth()+geom_abline()
+
+```
 
 ```{r}
 
-pois.1<-glm(decesos~casos.0+casos.8+casos.12,chile,x=T,y=T,family="poisson")
+pois.1<-glm(formula(paste0("decesos~",paste0("casos.",coef.rel-2, collapse=" + "))) ,chile,x=T,y=T,family="poisson")
 summary(pois.1)
 ```
 ```{r}

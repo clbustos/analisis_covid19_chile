@@ -1,0 +1,181 @@
+---
+title: "Análisis evolución Covid-19 Chile casos y decesos (02/05/2020)"
+author: "Claudio Bustos"
+date: "02/5/2020"
+output:
+  html_document:
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+source("analisis_3.R")
+options(scipen=9000) # Idea de taturrion
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+library(pander)
+library(ggrepel)
+f.comp<-43943
+f.actual<-43952
+datos.casos.comp<-lapply(datos.casos.total,function(x) {x<-x[x$fecha<=f.comp,]})
+datos.casos<-lapply(datos.casos.total,function(x) {x<-x[x$fecha<=f.actual,]})
+datos.decesos<-lapply(datos.decesos.total,function(x) {x<-x[x$fecha<=f.actual,]})
+
+
+# Elimino la serie de decesos sin casos
+
+for(i in names(datos.decesos)) {
+  if(tail(datos.decesos[[i]],1)$casos<2) {
+    datos.decesos[[i]]<-NULL
+  }
+}
+
+# Idea de varios del reddit
+# Paleta de https://medialab.github.io/iwanthue/
+
+
+
+
+
+
+
+```
+
+* Reportes anteriores: https://github.com/clbustos/analisis_covid19_chile
+
+**Importante** : El Ministerio ha cambiado los criterios para definir que es un casos a partir del 29 de Abril. No queda claro si las cifras previas consideraban o no a los COVID-19 positivos catalogados como asintomáticas. Historia en  [Biobío Chile](https://www.biobiochile.cl/noticias/nacional/chile/2020/04/29/chile-suma-520-nuevos-casos-de-covid-19-con-polemica-por-exclusion-de-250-pacientes-asintomaticos.shtml).
+
+Las curvas de predicción volverán el 7 de Mayo.
+
+
+## Análisis de series de casos
+
+### Serie total
+
+La serie de casos se hace hace partir de los 25 casos, excepto para Aysén - donde no hay casos nuevos en los últimos días, para facilitar la comparación desde un punto de un punto de partida común. 
+
+Si observamos las curvas por zonas geográficas del país, podemos observar lo siguiente:
+
+* Norte Grande: Se observan curvas totales que indican ausencia de mitigación en Antofagasta y Tarapacá. Arica y Parinacota y presenta dos ciclos de aceleración y desaceleración, siendo la tendencia actual a descender. Atacama muestra un desarrollo muy irregular, lo que se explica por los pocos casos que ha tenido hasta ahora.
+* Norte Chico: Coquimbo y Valparaíso muestra un rápido desarrollo inicial, con una mitigación más fuerte en Coquimbo. Valparaíso muestra una leve aceleración en la última semana.
+* Zona Central. Ñuble muestra una fuerte mitigación, en tanto Maule y O'Higgins presenta procesos recientes más controlados. La Región Metropolitana presenta una progresiva aceleración desde la última semana, siendo más notoria en los últimos tres días 
+* Zona Sur: Se observan curvas de mitigación en todas las regiones, con una aceleración hace cerca de dos semanas en Araucanía que se aprecia controlada.
+* Zona Austral: Se grafica solo a Magallanes, ya que Aysén no presenta casos nuevos desde hace 26 días. Se observa una curva clara de mitigación.
+
+```{r, warning=FALSE}
+for(zona in unique(zonas.chile)) {
+  regiones.zona<-names(zonas.chile)[zonas.chile==zona]
+  regiones.zona <- regiones.zona[!(regiones.zona %in% c("Aysén","total"))]
+  if(length(regiones.zona)>0) {
+    g<-plot.avance.pais(datos.casos[c(regiones.zona,"total")],predicted = F,min.casos = 25)+guides(color=guide_legend("Región"))+theme_bw()+paleta+labs(title=zona)
+    print(g)
+  }
+}
+```
+
+Con respecto a la serie de casos totales de  día vs el anterior, se mantiene la tasa cercana al 10% de Tarapacá (en descenso) y Antofagasta (en aumento).  Arica y Parinacota si bien había bajado, ahora vuelve a subir, en tanto que Atacama comienza a mostrar una tendencia descendente hacia 4 días. Valparaíso, Metropolitana y la serie total muestran tendencia ascendente.
+
+
+```{r}
+plot.tasa.casos(datos.casos, span.param = NULL)+facet_wrap(~pais) + geom_abline(slope=0,intercept=1,col="darkgreen",alpha=0.5) + geom_abline(slope=0,intercept=1.2,col="yellow",alpha=0.5)+geom_abline(slope=0,intercept=1.4,col="red",alpha=0.5)+guides(color=guide_legend("Región"))+theme_bw()+paleta
+```
+
+Una forma de visualizar rápidamente el cambio es calcular la tasa de incremento diario usando regresión sobre los logs de los casos de la semana pasada vs la actual. Una tasa de 1 indica que tenemos los mismos casos de un día a otro, que es el caso de Aysén. Si se traza una línea en la diagonal, cualquier región que quede sobre esta línea está más acelerada en la última semana que en la anterior. Al día de hoy, es el caso de la región Metropolitana, Valparaíso y la serie total. En tanto, el resto de las regiones presenta tasas inferiores a la semana anterior, excepto Ñuble que prácticamente tiene la misma tasa en las últimas dos semanas.
+
+```{r}
+plot(evaluacion.curva.14dias(datos.casos))+paleta
+```
+
+
+### Casos nuevos
+
+Ayer bajé el ancho de banda de la regresión loess, para tener una visión más clara de las tendencia. Ahora se puede apreciar de forma más clara como la tendencia ascendente ya se apreciaba hace 10 días.
+
+```{r}
+plot.avance.pais(datos.casos[c("total","Metropolitana")],nvar = 'casos.nuevos', predicted = F,min.casos = 25, log.param =F, span.param = 0.7, con.etiqueta = FALSE) + guides(color=guide_legend("Región"))+ facet_wrap(~pais)+paleta+theme_bw()
+```
+
+Usando la escala a logarítmica, se puede comparar mejor los patrones de las regiones con menos casos. Se puede ver como los casos nuevos muestran  un claro patrón exponencial para la Metropolitana y la total.
+
+```{r}
+plot.avance.pais(datos.casos[c("total","Metropolitana")],nvar = 'casos.nuevos', predicted = F,min.casos = 25, log.param =T, span.param = 0.7, con.etiqueta = FALSE) + guides(color=guide_legend("Región"))+ facet_wrap(~pais)+paleta+theme_bw()
+
+
+```
+
+Si observamos la evolución en el resto de las regiones, podemos distinguir los siguientes tipos de patrones:
+
+* Acelerados: progresivo aumento de los número de casos, sin peak evidente. Metropolitana, Antofagasta, Atacama.
+* Mitigación de ciclo único: Se observa un claro peak con descenso posterior. Biobío,  Magallanes, Maule, Araucanía, Coquimbo, Tarapacá parece que entrará en esta categoría. 
+* Mitigación (incompleta) con ciclo múltiple: Se presentan ciclos de aumento y decremento, que no permiten determinar un claro descenso de la curva. Arica y Parinacota, Los Lagos, Los Ríos, O'Higgins Ñuble y Valparaíso.
+
+
+```{r}
+plot.avance.pais(datos.casos[!(names(datos.casos) %in% c("total","Metropolitana","Aysén"))],nvar = 'casos.nuevos', predicted = F,min.casos = 1, log.param =T, span.param = 0.7, con.etiqueta = FALSE) + guides(color=guide_legend("Región"))+ facet_wrap(~pais)+paleta+theme_bw()
+```
+
+Usando la tasa de casos nuevos diarios vs los del día anterior, con ventana de 7 días, se puede ver con claridad la aceleración (tasas sobre 1) en Valparaíso y Metropolitana. Ñuble presenta una fuerte disminución de casos reciente. Se observa la progresiva desaceleración en Biobío y Araucanía, interrumpida por un ascenso a 1 reciente. La tasa total presenta claramente aceleración desde hace una semana.
+
+```{r}
+plot.tasa.casos(datos.casos[c( "Valparaíso","Metropolitana","Ñuble","Biobío","Araucanía", "total")], span.param = NULL, casos.nuevos = T,ventana = 7)+facet_wrap(~pais)+guides(color=guide_legend("Región"))+ geom_abline(slope=0,intercept=1,col="darkgreen",alpha=0.5) +theme_bw()+paleta
+```
+
+
+En el caso del Maule, y Tarapacá, se puede apreciar en a última semana oscilaciones cerca de la tasa 1.
+
+
+```{r}
+plot.tasa.casos(datos.casos[c("Maule","Tarapacá")], span.param = NULL, casos.nuevos = T,ventana = 5)+facet_wrap(~pais)+guides(color=guide_legend("Región"))+ geom_abline(slope=0,intercept=1,col="darkgreen",alpha=0.5) +theme_bw()+paleta
+```
+
+
+## Ventiladores y Casos en UCI
+
+
+El total de ventiladores ocupados se mantiene en los últimos dos días, aumentando a 1116.
+
+```{r, results='asis'}
+pandoc.table(tail(datos.ministerio.bruto$vent.diario[,c("fecha","total","disponibles","ocupados")],7), "Uso de ventiladores última semana", row.names=F)
+```
+
+```{r}
+rvd<-melt(datos.ministerio.bruto$vent.diario,id.vars = c("fecha","dia"))
+
+ggplot(rvd,aes(x=as.Date(fecha),y=value,color=variable))+geom_point()+geom_line()+ylim(0,1800)+ylab("Nº de Ventiladores")+xlab("Fecha")
+```
+
+Si analizamos la serie total de pacientes en UCI para Covid-19, se observa que por cuarto día supera los 420 casos. 
+```{r, results='asis'}
+pandoc.table(tail(datos.ministerio.bruto$hosp.uci.regiones[,c("fecha","total")],7), "Uso de camas UCI Covid-19", row.names=F)
+```
+
+```{r}
+ggplot(datos.ministerio.bruto$hosp.uci.regiones,aes(x=as.Date(fecha),y=total))+geom_line()+ylim(0,max(datos.ministerio.bruto$hosp.uci.regiones$total+10))+ylab("Nº de casos en UCI")+xlab("Fecha")
+```
+
+Al analizar la serie por regiones, podemos ver que en su mayoría los casos UCI se encuentran en la Región Metropolitana,mantiendo un aumento constante durante los últimos 10 día. Magallanes sigue presentando un ascenso lento, pero constante, con un leve descenso en los últimos 4 días. Antofagasta sigue presentando un ascenso relevante en la última semana.
+
+```{r}
+ggplot(datos.hosp.uci[datos.hosp.uci$region!="total",],aes(x=as.Date(fecha), y=casos, color=region))+geom_line()+geom_point()+paleta
+ggplot(datos.hosp.uci[!(datos.hosp.uci$region %in% c("Metropolitana","total")),],aes(x=as.Date(fecha), y=casos, color=region))+geom_line()+geom_point()+paleta
+
+```
+
+
+
+## Decesos
+
+Se observa que la curva total está estable y aceleración en la Metropolitana. 
+
+```{r serie decesos}
+plot.avance.pais(datos.decesos,predicted = F,min.casos = 2,span.param = NULL) +guides(color=guide_legend("Región"))+theme_bw()+paleta+geom_line(alpha=0.6,size=1.5)
+```
+
+Si observamos la serie de decesos por día, desde los 2 casos, podemos observar ya un aumento a una tasa cercana a los 10 casos por día.
+
+```{r}
+plot.avance.pais(datos.decesos["total"],predicted = F,min.casos = 2,span.param = 0.8,nvar = "casos.nuevos",log.param = F) +guides(color=guide_legend("Región"))+theme_bw()+paleta+geom_line(alpha=0.6,size=1.5)
+
+```
+
+
+**Fuentes de información**:
+Principalmente, se utilizó el reporte diario del [MINSAL](https://www.minsal.cl/nuevo-coronavirus-2019-ncov/casos-confirmados-en-chile-covid-19/), usando [Wayback machine](https://archive.org/web/) para recopilar la información ya no disponible. También se ocupa la nueva serie disponible en el [Github del Ministerio de Ciencias](https://github.com/MinCiencia/Datos-COVID19).

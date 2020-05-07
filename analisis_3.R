@@ -12,17 +12,19 @@ library(gganimate)
 library(ggrepel)
 library(R.cache)
 library (RCurl)
-
+library(benford.analysis)
 
 
 source("funciones_soporte.R")
 
 
-zonas.chile<-list('Arica.y.Parinacota'='Norte Grande' ,
-                  'Tarapacá'='Norte Grande' ,
-                  'Antofagasta'='Norte Grande' ,
-                  'Atacama'='Norte Grande' , 'Coquimbo'='Norte Chico' , 'Valparaíso'='Norte Chico' , 'Metropolitana'='Central' , 'O’Higgins'='Central' , 'Maule'='Central' , 'Ñuble'='Central' , 'Biobío'='Sur' , 'Araucanía'='Sur' , 'Los.Ríos'='Sur' , 'Los.Lagos'='Sur' , 'Aysén'='Austral' , 'Magallanes'='Austral' , 'total'='Total')
+zonas.chile<-list('Arica.y.Parinacota'='Norte' ,
+                  'Tarapacá'='Norte' ,
+                  'Antofagasta'='Norte' ,
+                  'Atacama'='Norte' , 'Coquimbo'='Norte' , 'Valparaíso'='Central' , 'Metropolitana'='Central' , 'O’Higgins'='Central' , 'Maule'='Central' , 'Ñuble'='Central' , 'Biobío'='Sur' , 'Araucanía'='Sur' , 'Los.Ríos'='Sur' , 'Los.Lagos'='Sur' , 'Aysén'='Austral' , 'Magallanes'='Austral' , 'total'='Total')
 
+
+paleta<-paleta.regiones()
 xlsx.casos<-read.xlsx("casos_chile_regiones.xlsx",sheet = 1)
 xlsx.decesos<-read.xlsx("casos_chile_regiones.xlsx",sheet = 2)
 
@@ -74,6 +76,8 @@ descargar.desde.github<-function(url) {
 uri.github.min<-list(vent.diario="https://raw.githubusercontent.com/MinCiencia/Datos-COVID19/master/input/ReporteDiario/NumeroVentiladores.csv",
 hosp.uci.diario="https://raw.githubusercontent.com/MinCiencia/Datos-COVID19/master/input/ReporteDiario/HospitalizadosUCIEtario.csv",
 hosp.uci.regiones="https://raw.githubusercontent.com/MinCiencia/Datos-COVID19/master/input/ReporteDiario/UCI.csv")
+
+
 
 datos.ministerio.bruto<-lapply(uri.github.min, descargar.desde.github)
 

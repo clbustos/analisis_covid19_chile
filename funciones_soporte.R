@@ -257,7 +257,7 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
     }
     x<-x[x$casos>=min.casos,]
     dias<-cbind(dia=x$dia,dia2=x$dia^2)
-    aa<-forecast::Arima(x$casos, c(2,0,0), include.constant = T,xreg = dias)
+    aa<-forecast::Arima(x$casos, c(1,0,0), include.constant = T,xreg = dias)
     ult.dia<-tail(x$dia,1)
     sec.pred<-ult.dia+(1:n.ahead)
     prediccion<-forecast(aa,h=n.ahead,level=95,xreg =cbind(dia=sec.pred    ,  dia2=sec.pred^2  ))
@@ -506,4 +506,86 @@ plot.tasa.casos.animado<-function(inicio, xlsx.base,zonas, paleta) {
 
   rr1<-do.call(rbind,rr)
   ggplot(rr1,aes(x=l,y=c,label=zona,color=zona))+geom_point()+paleta+geom_label()+geom_hline(yintercept = 0,alpha=0.5)+geom_vline(xintercept = 0,alpha=0.5)+labs(title="Dia: {frame_time}", x="lineal",y="cuadratico")+transition_time(dia)
+}
+
+# Toma datos y calcula la tasa de aumento para los últimos 14 días, separandolo
+# en dos fases
+evaluacion.curva.14dias<-function(x) {
+  eval.uni<-function(x) {
+    if(length(x)<14) {
+      stop("Serie debe tener al menos 14 días")
+    }
+    #print(x)
+    x1<-c(0:6,rep(6,7))
+    x2<-c(rep(0,7),1:7)
+    y<-log(tail(x,14))
+    lm.1<-lm(y~x1+x2)
+
+    c(exp(coef(lm.1))[2:3],tail(x,1))
+  }
+  res<-data.frame(t(sapply(x,function(xx) {
+    eval.uni(xx$casos)
+  })))
+  res$region<-names(x)
+  colnames(res)<-c("sem.1","sem.0","total","region")
+  class(res)<-c("evaluacion.curva.14dias","data.frame")
+  res
+}
+
+plot.evaluacion.curva.14dias<-function(x) {
+  library(ggplot2)
+  ggplot(x,aes(x=sem.1,y=sem.0,label=region,color=region,size=total))+geom_point()+geom_label_repel(size=3)+geom_abline(slope = 1,alpha=0.5)+xlab("Dos semanas atrás")+ylab("Última semana")+theme(legend.position = "none")
+}
+
+
+animacion.evaluacion.curva.14dias<-function(dia.inicio, xlsx.base, paleta,zonas) {
+
+  rr<-lapply(dia.inicio:nrow(xlsx.base),function(i) {
+    datos.casos.parc<-xlsx.base[1:i,]
+    lp.p<-leer.datos(datos.casos.parc, zonas)
+    tp.l<-evaluacion.curva.14dias(lp.p)
+    tp.l$dia<-convertToDate(tail(datos.casos.parc$fecha,1))
+    tp.l
+  })
+
+  rr1<-do.call(rbind,rr)
+
+  ggplot(rr1,aes(x=sem.1,y=sem.0,label=region,color=region,size=total))+geom_point()+geom_label(size=3)+geom_abline(slope = 1,alpha=0.5)+xlab("Dos semanas atrás")+ylab("Última semana")+theme(legend.position = "none")+labs(title="Dia: {frame_time}")+paleta+transition_time(dia)
+}
+
+
+# Idea de varios del reddit
+# Paleta de https://medialab.github.io/iwanthue/
+
+paleta.regiones<-function() {
+  cat.colores<-c('Arica.y.Parinacota'='#ff3333' ,
+                 'Arica y Parinacota'='#ff3333',
+                 'Tarapacá'="#aa3333" ,
+                 'Tarapaca'="#aa3333",
+                 'Antofagasta'="#aa5599" ,
+                 'Atacama'="#ffbb66" ,
+                 'Coquimbo'="#ee6633" ,
+                 'Valparaíso'="#d6dd44" ,
+                 'Valparaiso'="#d6dd44",
+                 'Metropolitana'="#777799" ,
+                 'O’Higgins'="#aaeeaa" ,
+                 'Del Libertador General Bernardo O’Higgins'="#aaeeaa" ,
+                 'Maule'="#55ffaa" ,
+                 'Ñuble'="#50e0c9" ,
+                 'Nuble'="#50e0c9" ,
+                 'Biobío'= "#4499ee",
+                 'Biobio'= "#4499ee",
+                 'Araucanía'= "#51ae72",
+                 'La Araucania'= "#51ae72",
+                 'Los.Ríos'="#9900ff" ,
+                 'Los Rios'="#9900ff" ,
+                 'Los.Lagos'="#9999ff" ,
+                 'Los Lagos'="#9999ff" ,
+                 'Aysén'="#6666dd" ,
+                 'Aysen'="#6666dd" ,
+                 'Magallanes'="#0000aa" ,
+                 'Magallanes y la Antartica'="#0000aa" ,
+                 'total'="000033")
+  paleta<-scale_colour_manual(values=cat.colores)
+  paleta
 }

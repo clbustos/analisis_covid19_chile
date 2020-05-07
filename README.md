@@ -38,6 +38,13 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 26/04/2020: https://rpubs.com/clbustos/605437
 * 27/04/2020: https://rpubs.com/clbustos/605968
 * 28/04/2020: https://rpubs.com/clbustos/606443
+* 29/04/2020: No se realiza, por el cambio de 'metodología' del MINSAL
+* 30/04/2020: https://rpubs.com/clbustos/607396
+* 01/05/2020: https://rpubs.com/clbustos/607679
+
+(Se realizaron. Falta registro)
+
+* 07/05/2020: https://rpubs.com/clbustos/610871
 
 ## Pruebas del modelo predictivo:
 
@@ -89,7 +96,9 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 * 04/04/2020: https://rpubs.com/clbustos/594793
 
 
+## Fuentes
 
+* https://www.gob.cl/coronavirus/cifrasoficiales/
 
 ## Lecturas interesantes.
 
