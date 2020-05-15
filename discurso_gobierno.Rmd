@@ -1,0 +1,27 @@
+---
+title: "El discurso del Gobierno de Chile frente al Covid-19: una aproximación gráfica"
+author: "Claudio Bustos"
+date: "12/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+source("discurso_gobierno.R")
+library(pander)
+panderOptions("table.split.table",Inf)
+```
+
+Creo que el manejo de comunicaciones del Gobierno durante la pandemia de Covid-19 ha sido *interesante*.
+
+
+```{r fig.width=10, fig.height=6}
+ggplot(dl.1,aes(x=fecha,y=casos.nuevos,label=textos,color=autor))+geom_point()+geom_smooth(color='blue', method="loess")+geom_label_repel(data=  dl.1[!is.na(dl.1$textos),],  mapping = aes(x=fecha, y=casos.nuevos,label=textos), segment.colour="black", box.padding=0.5, hjust        = 1,nudge_x=2000)+labs(title = "Los discursos del Gobierno por el Covid 19", x="Fecha",y="casos nuevos por día")+xlim(as.Date("2020-03-01"),as.Date("2020-06-15"))+scale_color_manual(values=c("#666666","orange","blue","darkgreen","red","darkorange"))+theme_bw()
+```
+
+## Detalle
+
+```{r, results='asis'}
+pandoc.table(textos, missing="")
+```
+

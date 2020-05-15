@@ -13,7 +13,7 @@ library(ggrepel)
 library(R.cache)
 library (RCurl)
 library(benford.analysis)
-
+library(dynlm)
 
 source("funciones_soporte.R")
 
@@ -88,4 +88,3 @@ datos.ministerio.bruto$hosp.uci.regiones$total<-rowSums(subset(datos.ministerio.
 datos.hosp.uci<-melt(datos.ministerio.bruto$hosp.uci.regiones,id.vars = c("fecha","dia"))
 
 colnames(datos.hosp.uci)<-c("fecha","dia","region","casos")
-

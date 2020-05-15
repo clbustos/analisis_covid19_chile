@@ -81,7 +81,7 @@ plot.avance.pais<-function(x, nvar='casos', min.casos=5, span.param=0.40, log.pa
     gg<-gg+labs(caption=texto.nota)
   }
   if (!is.null(span.param)) {
-    gg<-gg+geom_smooth(span=span.param, alpha=0.75,se = FALSE)
+    gg<-gg+geom_smooth(span=span.param, alpha=0.75,se = FALSE, method="loess")
   }
 
   gg
@@ -112,16 +112,16 @@ plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2
     x<-x[x$casos>=min.casos,]
     if(casos.nuevos) {
       dif.log.casos<-c(0,diff(log(x$casos.nuevos)))
+      is.na(dif.log.casos)<-is.infinite(dif.log.casos)
     } else {
       dif.log.casos<-c(0,diff(log(x$casos)))
     }
     if(derivada.2) {
-
       roll.mean<-zoo::rollmean(x=c(0,diff(dif.log.casos)),k=ventana)
       data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
     } else {
-
       roll.mean<-zoo::rollmean(x=dif.log.casos,k=ventana)
+
       data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
     }
     #x$dia<-0:(nrow(x)-1)
@@ -130,6 +130,7 @@ plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2
   })
   unido<-do.call(rbind,x )
   unido$es.mas.1<-unido$dif.log.casos!=0
+
   if(casos.nuevos) {
   gg<-ggplot(unido, aes(x=dia, y=exp(dif.log.casos), color=pais))+geom_point(show.legend=FALSE)+ylab(ylabt)+geom_line()
   } else {

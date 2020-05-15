@@ -92,7 +92,7 @@ Probemos a validar el modelo previo.El R² es mejor que el del modelo con múlti
 
 
 ```{r}
-coef.rel<-which(as.logical(coef.s0!=0))[-1]
+coef.rel<-which(as.logical(coef.s0!=0))[-1]-1
 xx.l<-data.frame(xx[,coef.rel],yy=yy)
 ols.2<-ols(yy~., xx.l,x=T,y=T)
 validate(ols.2)
@@ -115,7 +115,7 @@ ggplot(data.frame(pr=predict(pois.0,type="response"), obs=yy), aes(x=pr,y=obs))+
 
 ```{r}
 
-pois.1<-glm(formula(paste0("decesos~",paste0("casos.",coef.rel-2, collapse=" + "))) ,chile,x=T,y=T,family="poisson")
+pois.1<-glm(formula(paste0("decesos~",paste0("casos.",coef.rel-1, collapse=" + "))) ,chile,x=T,y=T,family="poisson")
 summary(pois.1)
 ```
 ```{r}

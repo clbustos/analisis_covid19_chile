@@ -62,7 +62,7 @@ for(zona in unique(zonas.chile)) {
 }
 ```
 
-Con respecto a la serie de casos totales de  día vs el anterior, en general se observan desaceleraciones en las dstintas regiones muestran desaceleraciones para los últimos días, excepto Valparaíso, Metropolitana, Biobío y Aysén. La serie total se ve también un tanto acelerada.
+Con respecto a la serie de casos totales de  día vs el anterior, en general se observan desaceleraciones en las dstintas regiones para los últimos días, excepto Valparaíso, Metropolitana, Biobío y Aysén. La serie total se ve también un tanto acelerada.
 
 
 ```{r}
