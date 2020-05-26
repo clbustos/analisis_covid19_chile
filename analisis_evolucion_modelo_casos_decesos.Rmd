@@ -1,0 +1,229 @@
+---
+title: "Análisis de evolución de coeficientes"
+author: "Claudio Bustos"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: lumen
+    toc: yes
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+source("analisis_3.R")
+library(dplyr)
+library(dynlm)
+library(viridis)
+library(RColorBrewer)
+library(colorRamps)
+unido<-data.frame(fecha=convertToDate(datos.casos.total$total$fecha), casos.nuevos=datos.casos.total$total$casos.nuevos) %>% 
+  left_join( data.frame(fecha=convertToDate(datos.decesos.total$total$fecha), decesos.nuevos=datos.decesos.total$total$casos.nuevos), by="fecha") %>% 
+  left_join(data.frame(fecha=as.Date(datos.ministerio.bruto$hosp.uci.regiones$fecha[-1]),
+                       camas.uci=diff(datos.ministerio.bruto$hosp.uci.regiones$total)), by="fecha") %>%
+  left_join(data.frame(fecha=as.Date(datos.ministerio.bruto$vent.diario$fecha[-1]),
+                       vent.usados=diff(datos.ministerio.bruto$vent.diario$ocupados)), by="fecha")
+
+```
+
+
+## Modelo deceso basado en casos
+
+Modelo con lags de 1 a 22
+
+```{r}
+casos.nuevos<-ts(unido$casos.nuevos)
+decesos.nuevos<-ts(unido$decesos.nuevos)
+dyn.1<-dynlm(decesos.nuevos~L(casos.nuevos,c(1:22)))
+summary(dyn.1)
+```
+
+
+
+
+```{r}
+dd<-22
+res1<-lapply(46:nrow(unido),function(i) {
+  dl<-unido[1:i,]
+  dym.l<-dynlm(ts(decesos.nuevos)~L(ts(casos.nuevos),c(1:dd)), data=dl)
+  #print(dym.l)
+  s1<-summary(dym.l)
+  res<-s1$coefficients[,c(1,4)]
+  colnames(res)<-c("est","p")
+  res<-res[-1,]
+  data.frame(coef.n=paste0("c",sprintf("%02d",1:dd)),res,
+             sign=res[,2]<0.05,
+             fecha=tail(dl$fecha,1),
+             r2=s1$adj.r.squared
+             )
+})
+res2<-do.call(rbind,res1)
+```
+Podemos mapear los coeficientes desde el día 30 (1 de Abril) en adelante. Resulta interesante ver que hay lags que resultan significativos en más ocasiones que otros.
+
+```{r}
+t1<-table(res2$coef.n, res2$sign)[,2]
+barplot(t1)
+```
+
+Podemos ver también como evolucionan los R² ajustados de la relación entre casos y decesos. Claramente, existe un desajuste en la predicción entre los días 30 de Abril y 14 de Mayo, que se corrigió tras el día 14 de Mayo. Podemos hipotetizar que esto se debió al cambio en la definición de caso, que daño las predicciones hasta que la cantidad de casos activos con la nueva definición es mayor que la de los casos antiguos, generando una mayor precisión en la estimación.
+
+```{r}
+r1<-do.call(rbind,lapply(res1,function(x) {tail(x,1)[,c("fecha","r2"),drop=FALSE]}))
+ggplot(r1,aes(x=fecha, y=r2))+geom_point()+geom_line()
+```
+
+
+```{r}
+
+paleta<-scale_fill_manual(values = colorRampPalette(brewer.pal(12, "Set3"))(22))
+
+ggplot(res2,aes(x=fecha,y=est,color=coef.n,group=coef.n))+geom_point(aes(alpha=ifelse(sign,1,0.2)),size=2)+geom_line(alpha=0.3)+theme_bw()+paleta
+```
+
+
+## Modelo de camas UCI basado en casos
+
+```{r}
+unido.camas1<-unido[!is.na(unido$camas.uci),]
+casos.nuevos.uci<-ts(unido.camas1$casos.nuevos)
+camas.nuevas.uci<-ts(unido.camas1$camas.uci)
+dyn.uci<-dynlm(camas.nuevas.uci~L(casos.nuevos.uci,c(1:14)))
+summary(dyn.uci)
+```
+
+
+```{r}
+dd<-14
+res1<-lapply(31:nrow(unido.camas1),function(i) {
+  dl<-unido.camas1[1:i,]
+  dym.l<-dynlm(ts(camas.uci)~L(ts(casos.nuevos),c(1:dd)), data=dl)
+  #print(dym.l)
+  s1<-summary(dym.l)
+  res<-s1$coefficients[,c(1,4)]
+  colnames(res)<-c("est","p")
+  res<-res[-1,]
+  data.frame(coef.n=paste0("c",sprintf("%02d",1:dd)),res,
+             sign=res[,2]<0.05,
+             fecha=tail(dl$fecha,1),
+             r2=s1$adj.r.squared
+             )
+})
+res2<-do.call(rbind,res1)
+```
+
+
+Los coeficientes significativos son 2, 8, 10 y 12
+
+```{r}
+t1<-table(res2$coef.n, res2$sign)[,2]
+barplot(t1)
+```
+
+
+
+```{r}
+r1<-do.call(rbind,lapply(res1,function(x) {tail(x,1)[,c("fecha","r2"),drop=FALSE]}))
+ggplot(r1,aes(x=fecha, y=r2))+geom_point()+geom_line()
+```
+
+
+```{r}
+
+paleta<-scale_fill_manual(values = colorRampPalette(brewer.pal(12, "Set3"))(14))
+ggplot(res2,aes(x=fecha,y=est,color=coef.n,group=coef.n))+geom_point(aes(alpha=ifelse(sign,1,0.2)),size=2)+geom_line(alpha=0.3)+theme_bw()+paleta
+```
+
+## Modelo de decesos basado en camas UCI
+
+El modelo de hoy tiene como significativos los coeficientes de lag 5 y 10.
+```{r}
+unido.camas<-unido[!is.na(unido$camas.uci),]
+casos.nuevos.uci<-ts(unido.camas$camas.uci)
+decesos.nuevos.uci<-ts(unido.camas$decesos.nuevos)
+dyn.uci<-dynlm(decesos.nuevos.uci~L(casos.nuevos.uci,c(1:14)))
+summary(dyn.uci)
+```
+
+```{r}
+
+res1.uci<-lapply(30:nrow(unido.camas),function(i) {
+  dl<-unido.camas[1:i,]
+  casos.nuevos.uci.l<-ts(dl$camas.uci)
+  decesos.nuevos.uci.l<-ts(dl$decesos.nuevos)
+  dym.l<-dynlm(decesos.nuevos.uci.l~L(casos.nuevos.uci.l,c(1:14)))
+  s1<-summary(dym.l)
+  
+  res<-s1$coefficients[,c(1,4)]
+  colnames(res)<-c("est","p")
+  res<-res[-1,]
+  
+  data.frame(coef.n=paste0("c",sprintf("%02d",1:14)),res,
+             sign=res[,2]<0.05,fecha=openxlsx::convertToDate(tail(dl$fecha,1)))
+})
+res2.uci<-do.call(rbind,res1.uci)
+```
+
+Se puede apreciar que el coeficiente que aparece más veces significativo es el del día 3.
+
+```{r}
+t1.uci<-table(res2.uci$coef.n, res2.uci$sign)[,2]
+barplot(t1.uci)
+```
+
+Se puede observar que el coeficiente al día 10 adquiere progresivamente más peso. El coeficiente negativo del día 3, que era prácticamente constante, dejo de ser significativo hace 3 días.
+```{r}
+
+paleta<-scale_fill_manual(values = colorRampPalette(brewer.pal(12, "Set3"))(14))
+
+ggplot(res2.uci, aes(x=fecha,y=est,color=coef.n,group=coef.n))+geom_point(aes(alpha=ifelse(sign,1,0.2)),size=2)+geom_line(alpha=0.3)+theme_bw()+paleta
+```
+
+
+## Modelo basado en ventiladores
+
+```{r}
+unido.vent<-unido[!is.na(unido$vent.usados),]
+casos.nuevos.vent<-ts(unido.vent$vent.usados)
+decesos.nuevos.vent<-ts(unido.vent$decesos.nuevos)
+dyn.vent<-dynlm(decesos.nuevos.vent~L(casos.nuevos.vent,c(1:14)))
+summary(dyn.vent)
+```
+
+```{r}
+
+res1.vent<-lapply(30:nrow(unido.vent),function(i) {
+  dl<-unido.vent[1:i,]
+  casos.nuevos.vent.l<-ts(dl$vent.usados)
+  decesos.nuevos.vent.l<-ts(dl$decesos.nuevos)
+  dym.l<-dynlm(decesos.nuevos.vent.l~L(casos.nuevos.vent.l,c(1:14)))
+  s1<-summary(dym.l)
+  
+  res<-s1$coefficients[,c(1,4)]
+  colnames(res)<-c("est","p")
+  res<-res[-1,]
+  
+  data.frame(coef.n=paste0("c",sprintf("%02d",1:14)),res,
+             sign=res[,2]<0.05,fecha=openxlsx::convertToDate(tail(dl$fecha,1)))
+})
+res2.vent<-do.call(rbind,res1.vent)
+```
+
+No hay coeficientes significativos
+```{r}
+#t1.vent<-table(res2.vent$coef.n, res2.vent$sign)[,2]
+#barplot(t1.uci)
+```
+
+
+```{r}
+
+paleta<-scale_fill_manual(values = colorRampPalette(brewer.pal(12, "Set3"))(14))
+ggplot(res2.vent, aes(x=fecha,y=est,color=coef.n,group=coef.n))+geom_point(aes(alpha=ifelse(sign,1,0.2)),size=2)+geom_line(alpha=0.5)+theme_bw()
+```
