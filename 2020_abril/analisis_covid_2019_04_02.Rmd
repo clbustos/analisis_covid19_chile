@@ -1,0 +1,171 @@
+---
+title: "Análisis evolución Covid-19 - Chile vs Italia, España, Brasil, Corea del Sur (02/04/2020)"
+author: "Claudio Bustos"
+date: "02/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("analisis.R")
+options(scipen=9000) # Idea de taturrion
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+library(pander)
+datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43922,]})
+
+
+# Idea de varios
+cat.colores<-c(
+ "red",
+"#a547ce",
+"#cf5138",
+"#cd4a92",
+"#c5a836",
+"#6bc055"
+)
+names(cat.colores)<-names(datos.pais)
+cat.colores<-c(Z_Chile="red", cat.colores)
+paleta<-scale_colour_manual(values=cat.colores)
+```
+
+**NOTA**: Lo que presento aquí es un ejemplo de como realizar análisis de series de tiempo, usando datos de la evolución total de casos disponible en fuentes públicas en internet. No tiene ninguna validez epidemiológica, ya que eso requería un modelo de la diseminación de la enfermedad. En particular, las predicciones son solo válidas en cuanto no existan cambios en las políticas públicas; si los hay, se esperaría que (ojalá) las predicciones fuesen incorrectas.
+
+* Reportes anteriores: https://github.com/clbustos/analisis_covid19_chile
+
+
+* Texto del día: [Al peak de la crisis se necesitará haber formado 1.700 nuevas enfermeras para operar las nuevas camas críticas: ¿Estamos a tiempo?](https://interferencia.cl/articulos/al-peak-de-la-crisis-se-necesitara-haber-formado-1700-nuevas-enfermeras-para-operar-las) : ¿Por qué es importante? Por qué muestra con cifras muy detalladas la cantidad de recurso humano disponible para enfrentar a los pacientes de mayor gravedad. No basta con tener equipamiento, sino gente que pueda utilizarlo de manera adecuada.
+  
+## Análisis de datos observados
+
+Todas las series muestran desaceleración, excepto Brasil con un aumento explosivo de casos reportados en los últimos dos días. En Chile podemos ver que que la curva se ha estabilizado en ritmo en los últimos 5 días.
+```{r}
+datos.pais.2<-datos.pais
+datos.pais.2[["Chile"]]$pais<-"Z_Chile"
+plot.avance.pais(datos.pais.2,predicted = F,min.casos = 300)+paleta
+```
+
+En el caso de Chile, la tasa general de aumento baja a sigue en 18%, disminuyendo levemente cada día. Brasil, que mostraba una curva de desaceleración, ahora presenta un brusco cambio producto de las cifras entregadas ayer y hoy. En EEUU se observa una creciente desaceleración los últimos 5 días.
+
+
+
+```{r}
+plot.avance.pais(datos.pais[c("Chile","Brasil","EEUU")],predicted = T,min.casos = 300, span.param = NULL)+facet_wrap(~pais)+paleta
+```
+
+
+Para observar la tasa actual de Italia, Corea del Sur e Italia, estableceremos el punto de inicio en 6000 casos. En el caso de España, obtenemos que su tasa actual sigue siendo muy alta, de 17%, en tanto que Italia ya muestra un descenso bastante relevante a un 12%
+
+```{r}
+plot.avance.pais(datos.pais[c("España","Italia","Corea.del.Sur")],predicted = T,min.casos = 6000, span.param = NULL)+facet_wrap(~pais)+paleta
+```
+
+El análisis de curvas para los casos nuevos muestra un descenso sostenido en el ritmo, excepto en Brasil, que muestre un fuerte repunte. Corea del Sur pareciera no lograr una disminución de casos diarios bajo 1.
+
+```{r}
+plot.tasa.casos(datos.pais,min.casos = 100,span.param = NULL)+
+  facet_wrap(~pais)+
+  ylim(0.9,1.8)+
+    geom_abline(intercept=1.4, slope=0,alpha=0.5,col="darkred")+
+  geom_abline(intercept=1.2, slope=0,alpha=0.5,col="orange")+
+  geom_abline(intercept=1, slope=0,alpha=0.5,col="darkgreen")+theme_bw()+paleta
+```
+
+El gráfico FSDG (Fruna's second derivative graph), que corresponde a las diferencias diarias en la tasas de casos nuevos muestra claramente el estancamiento de Chile y el repunte de Brasil. Podemos observar un patrón interesante de desaceleración fuerte en la semana pasada con estancamiento actual. 
+
+```{r}
+plot.tasa.casos(datos.pais,min.casos = 200,span.param = NULL, derivada.2 = TRUE)+
+  facet_wrap(~pais)+theme_bw()+geom_abline(intercept=1, slope=0,alpha=0.5,col="darkgreen")+ylab("tasa día n / tasa día n-1")+paleta
+```
+
+
+## Predicción
+
+**NOTA**: Se presentan aquí tres metodologías de predicción. Recuerden que corresponden a un ejercicio para mostrar las bondades y dificultades de cada técnica
+
+Para predecir, se ocupan tres técnicas distintas:
+
+* regresión exponencial sobre datos totales: se ajusta la serie a la expresión $y=a * r^t$ usando regresión lineal. Es válida si el proceso no cambia a lo largo del tiempo, por lo que el periodo estudiado debe seleccionarse con cuidado. Se caracteriza porque el intervalo de confianza es constante al transformar los datos a logaritmo. 
+* tendencia sobre casos nuevos + AR(1): Se modela la tendencia de los casos nuevos usando regresión exponencial, con regresión cuadrada, más la relación que existe entre dos mediciones contiguas. El error estándar aumenta a lo largo del tiempo, tanto por el error al calcular la tendencia, como por el componente AR(1). El valor medio obtenido es bastante sensible a los cambios en las mediciones finales.
+* ARIMA(1,1,0) más deriva: Se ocupa un modelo autorregresivo, con diferenciación y deriva. Esto implica que se asume que los datos tienen una tendencia constante (como el modelo de regresión exponencial), pero se modela la relación que existe entre casos contiguos (como el modelo de tendencia). Tiende a generar modelos menos variables que el de tendencia + AR(1), pero asume que la curva de crecimiento es la misma de toda la serie de datos.
+
+## Predicción Chile y Brasil
+
+El estancamiento en la tasa de declive hace que el modelo T+AR(1) prediga para 6 días 5262 casos, siendo que ayer predecía 4871. Por tanto, la predicción a siete días de T+AR(1) es de 5516. ARIMA(1,1,0) genera una predicción bastante más compleja, de 10235 casos, que ojalá o se cumpla.
+```{r}
+prediccion<-prediccion.casos(datos.pais[c("Chile","Brasil")],min.casos = 300)
+plot( prediccion)
+```
+
+
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$exp, function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Exponencial")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$arima,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "ARIMA(1,1,0) con deriva")
+```
+
+
+## Predicción España, Italia y EEUU
+ En el caso de España, Italia y EEUU, usaremos como base de la predicción 10.000 casos. La información de los últimos días nos permite predecir también resultados más optimistas que los de la serie exponencial o ARIMA.
+
+
+```{r}
+prediccion<-prediccion.casos(datos.pais[c("Italia","España","EEUU")],min.casos = 10000)
+plot( prediccion)
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$exp, function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Exponencial")
+```
+
+
+```{r,results='asis'}
+r<-lapply(prediccion$arima,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "ARIMA(1,1,0) con deriva")
+```
+
+## Predicción Corea del Sur
+
+
+Usando los datos a partir de los 8000 casos, vemos que la serie en Corea de tendencia de nuevos casos va la baja, con respecto a a la curva exponencial como ARIMA, al igual que los dos últimos días.
+
+
+```{r}
+prediccion<-prediccion.casos(datos.pais[c("Corea.del.Sur")],min.casos = 8000)
+plot( prediccion)
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$exp, function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Exponencial")
+```
+
+
+```{r,results='asis'}
+r<-lapply(prediccion$arima,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "ARIMA(1,1,0) con deriva")
+```
+
+Fuentes de información:
+
+* Chile: https://www.minsal.cl/nuevo-coronavirus-2019-ncov/casos-confirmados-en-chile-covid-19/.
+* Otros países: https://www.worldometers.info/coronavirus/#countries

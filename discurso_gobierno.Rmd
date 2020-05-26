@@ -1,7 +1,7 @@
 ---
 title: "El discurso del Gobierno de Chile frente al Covid-19: una aproximación gráfica"
 author: "Claudio Bustos"
-date: "12/5/2020"
+date: "24/5/2020"
 output: html_document
 ---
 
@@ -15,8 +15,8 @@ panderOptions("table.split.table",Inf)
 Creo que el manejo de comunicaciones del Gobierno durante la pandemia de Covid-19 ha sido *interesante*.
 
 
-```{r fig.width=10, fig.height=6}
-ggplot(dl.1,aes(x=fecha,y=casos.nuevos,label=textos,color=autor))+geom_point()+geom_smooth(color='blue', method="loess")+geom_label_repel(data=  dl.1[!is.na(dl.1$textos),],  mapping = aes(x=fecha, y=casos.nuevos,label=textos), segment.colour="black", box.padding=0.5, hjust        = 1,nudge_x=2000)+labs(title = "Los discursos del Gobierno por el Covid 19", x="Fecha",y="casos nuevos por día")+xlim(as.Date("2020-03-01"),as.Date("2020-06-15"))+scale_color_manual(values=c("#666666","orange","blue","darkgreen","red","darkorange"))+theme_bw()
+```{r fig.width=12, fig.height=9}
+ggplot(dl.1,aes(x=fecha,y=casos.nuevos, color=autor))+geom_point()+geom_smooth(color='blue', method="loess")+geom_label_repel(data=  textos,  mapping = aes(x=Fecha, y=y, label=Titulo, color=Quien), segment.colour="black", box.padding=0.5, hjust        = 1,nudge_x=2000)+labs(title = "Los discursos del Gobierno por el Covid 19", x="Fecha",y="casos nuevos por día")+xlim(as.Date("2020-03-01"),as.Date("2020-07-15"))+scale_color_manual(values=c("#666666","purple","blue","darkgreen","red","darkorange", "darkred","#88cc88"))+theme_bw()
 ```
 
 ## Detalle

@@ -1,0 +1,278 @@
+---
+title: "Análisis evolución Covid-19 Chile casos y decesos (24/04/2020)"
+author: "Claudio Bustos"
+date: "24/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("analisis_3.R")
+options(scipen=9000) # Idea de taturrion
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+library(pander)
+library(ggrepel)
+f.comp<-43943
+f.actual<-43944
+datos.casos.comp<-lapply(datos.casos.total,function(x) {x<-x[x$fecha<=f.comp,]})
+datos.casos<-lapply(datos.casos.total,function(x) {x<-x[x$fecha<=f.actual,]})
+datos.decesos<-lapply(datos.decesos.total,function(x) {x<-x[x$fecha<=f.actual,]})
+
+
+# Elimino la serie de decesos sin casos
+
+for(i in names(datos.decesos)) {
+  if(tail(datos.decesos[[i]],1)$casos<2) {
+    datos.decesos[[i]]<-NULL
+  }
+}
+
+# Idea de varios del reddit
+# Paleta de https://medialab.github.io/iwanthue/
+
+
+cat.colores<-c('Arica.y.Parinacota'='#ff3333' , 
+               'Arica y Parinacota'='#ff3333',
+                  'Tarapacá'="#aa3333" ,
+               'Tarapaca'="#aa3333",
+                  'Antofagasta'="#aa5599" ,
+                  'Atacama'="#ffbb66" , 
+                  'Coquimbo'="#ee6633" ,
+                  'Valparaíso'="#d6dd44" ,
+               'Valparaiso'="#d6dd44",
+                  'Metropolitana'="#777799" , 
+                  'O’Higgins'="#aaeeaa" ,
+               'Del Libertador General Bernardo O’Higgins'="#aaeeaa" ,
+                  'Maule'="#55ffaa" ,
+                  'Ñuble'="#50e0c9" ,
+               'Nuble'="#50e0c9" ,   
+               'Biobío'= "#4499ee",
+               'Biobio'= "#4499ee",
+                  'Araucanía'= "#51ae72",
+               'La Araucania'= "#51ae72",
+                  'Los.Ríos'="#9900ff" ,
+               'Los Rios'="#9900ff" ,
+                  'Los.Lagos'="#9999ff" ,
+               'Los Lagos'="#9999ff" ,
+                  'Aysén'="#6666dd" ,
+               'Aysen'="#6666dd" ,
+                  'Magallanes'="#0000aa" ,
+               'Magallanes y la Antartica'="#0000aa" ,
+               'total'="000033")
+paleta<-scale_colour_manual(values=cat.colores)
+
+
+
+
+
+```
+
+* Reportes anteriores: https://github.com/clbustos/analisis_covid19_chile
+
+
+## Análisis de series de casos
+
+
+La serie de casos se hace hace partir de los 25 casos, excepto para Aysén - donde no hay casos nuevos en los últimos días, para facilitar la comparación desde un punto de un punto de partida común. 
+
+Al igual que ayer, la serie total parece mantener una tasa estable de incremento desde hace dos semanas. Esta tasa se ve explicada principalmente por un aumento también constante de casos en la región Metropolitana, pero es necesario notar los cambios más o menos relevantes en las otras regiones. En particular, Maule destaca por el aumento fuerte de casos que tuvo hace una semana, que parece haber sido controlado en los últimos tres días, así como un aumento de casos en O'Higgins
+
+```{r, warning=FALSE}
+
+plot.avance.pais(datos.casos[c('Arica.y.Parinacota','Tarapacá','Antofagasta','Coquimbo','Valparaíso','Metropolitana','O’Higgins','Maule','Ñuble','Biobío','Araucanía','Los.Ríos','Los.Lagos','Magallanes', 'total')],predicted = F,min.casos = 25)+guides(color=guide_legend("Región"))+theme_bw()+paleta
+
+plot.avance.pais(datos.casos[c( 'Aysén',"Atacama",'total')], predicted = F,min.casos = 5)+guides(color=guide_legend("Región"))+theme_bw()+paleta
+```
+
+
+La serie por región se hace partir de los 5 primeros casos.
+```{r}
+plot.avance.pais(datos.casos,predicted = F,min.casos = 5,span.param = 0.7, con.etiqueta = FALSE)+guides(color=guide_legend("Región"))+facet_wrap(~pais)+paleta+theme_bw()
+```
+
+
+Con respecto a la serie de casos totales de  día vs el anterior, se mantiene constante desde hace días  una tasa de incremento diario de 10% para casi todo el Norte Grande: Arica y Parinacota, Tarapacá y Antofagasta. Atacama ha presentado un incremento de casos importante en los últimos dos días. 
+
+
+```{r}
+plot.tasa.casos(datos.casos, span.param = NULL)+facet_wrap(~pais) + geom_abline(slope=0,intercept=1,col="darkgreen",alpha=0.5) + geom_abline(slope=0,intercept=1.2,col="yellow",alpha=0.5)+geom_abline(slope=0,intercept=1.4,col="red",alpha=0.5)+guides(color=guide_legend("Región"))+theme_bw()+paleta
+```
+
+En la serie de casos nuevos diarios vs los del día anterior, con ventana de 7 días, se puede apreciar una tendencia la baja en Valparaíso, Metropolitana, Ñuble y Biobío. La Araucanía, Los Ríos y los Lagos oscila cerca del 1, al igual que la serie total, que no muestra una baja relevante desde al menos 10 días.
+
+```{r}
+plot.tasa.casos(datos.casos[c( "Valparaíso","Metropolitana","Ñuble","Biobío","Araucanía","Los.Ríos","Los.Lagos", "total")], span.param = NULL, casos.nuevos = T,ventana = 7)+facet_wrap(~pais)+guides(color=guide_legend("Región"))+ geom_abline(slope=0,intercept=1,col="darkgreen",alpha=0.5) +theme_bw()+paleta
+```
+
+
+En el caso del Maule, se puede apreciar que tras el fuerte incremento en casos, vuelve a mantener valores de tasa inferiores a 1.
+
+
+```{r}
+plot.tasa.casos(datos.casos["Maule"], span.param = NULL, casos.nuevos = T,ventana = 5)+facet_wrap(~pais)+guides(color=guide_legend("Región"))+ geom_abline(slope=0,intercept=1,col="darkgreen",alpha=0.5) +theme_bw()+paleta
+```
+
+
+
+## Predicción
+
+### Predicción para serie total
+
+
+A partir del análisis del resultado del algoritmo de la última semana, para la predicción total se recorta la serie  a partir de lo 50 casos. 
+
+* tendencia sobre casos nuevos + AR(1) y sobre AR(4): Se modela la tendencia de los casos nuevos usando regresión exponencial, con regresión cuadradática, más la relación que existe entre mediciones contiguas. Se prueban dos modelos, uno que considera la relación solo entre cada tiempo y el anterior, AR(1), y un modelo más a largo plazo, que considera periodos de 4 días consecutivos, AR(4) . El error estándar aumenta a lo largo del tiempo, tanto por el error al calcular la tendencia, como por el componente autorregresivo. El valor medio obtenido es bastante sensible a los cambios en las mediciones finales.
+* Modelo lineal cuadrático: Un modelo muy sencillo es modelar los casos totales con $ y= \alpha + \beta_1 * dia + \beta_2 * dia^2$, usando autocorrelación AR(2). Si bien en las pruebas muestra tener un intervalo de confianza malo y sobreestimar, tiende a tener menor error cuadrático.
+
+El informe de la semana pasada mostró una subestimación constante de los modelos AR(1) + AR(4), y sobreestimación del modelo exponencial. 
+
+Si observamos la predicción a  `r f.actual-f.comp` días plazo, podemos ver que, como es costumbre,  el modelo cuadrático sobreestima el valor observado, en tanto que T+AR(1) y T+AR(4) subestima. Todas las predicciones presentan intervalos correctos.
+
+```{r,results='asis'}
+obs.hoy<-data.frame(casos=tail(datos.casos$total$casos,1), li=NA,ls=NA)
+prediccion.comp<-t(sapply(
+  prediccion.casos(datos.casos.comp["total"],min.casos = 50, modelos = c("cuad","tar2","tar4"), n.ahead=f.actual-f.comp), function(x) {
+  as.numeric(tail(x$total,1)[,c("casos","li","ls")])
+})
+)
+colnames(prediccion.comp)<-c("casos","li","ls")
+out<-rbind(obs.hoy, prediccion.comp)
+rownames(out)<-c("Observado","General: Cuadrático + AR(2)", "Casos nuevos : Tendencia + AR(1)", "Casos nuevos: Tendencia + AR(4)")
+pandoc.table(out)
+```
+
+
+Como ha sido la tónica durante la semana,  el modelo cuadrático es el más  pesimista, pero los modelos T+AR(1) y T+AR(4) tienden a converger. En una semana deberíamos tener entre 14000 y 16000 casos.
+
+```{r prediccion total}
+prediccion<-prediccion.casos(datos.casos["total"],min.casos = 50, modelos = c("tar2","tar4","cuad"))
+plot( prediccion)+guides(color=guide_legend("Modelo"))+theme(legend.position="bottom", legend.direction = "vertical")+scale_y_continuous(trans="log10",limits = c(6000,15000))+xlim(35,55)
+```
+
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar4,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Casos nuevos: tendencia + AR(4)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Casos nuevos: tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$cuad,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "General: Modelo cuadrático")
+```
+
+###  Predicciones para serie total usando predicción por regiones.
+
+Otro modelo posible de análisis es usar la suma de las predicciones parciales por región. No he calculado los intervalos de confianza, porque para que sean adecuados debería considerar la covarianza entre las series de las distintas regiones.
+
+Durante la semana se ha visto que la predicción del método cuadrático y el de tendencia de casos nuevos comienza a converger, lo cual suele ocurrir cuando las tasas locales dejan de tener variaciones bruscas. Este modelo predice entre 15500 y 16000 casos en una semana.
+
+```{r}
+
+min.corte<-list(
+  "Arica.y.Parinacota"=10,
+  "Tarapacá"=10,
+  "Antofagasta"=10,
+  "Atacama"=2,
+  "Coquimbo"=10,
+  "Valparaíso"=10,
+  "Metropolitana"=50,
+  "O’Higgins"=10,
+  "Maule"=10,
+  "Ñuble"=20,   
+  "Biobío"=10,
+  "Araucanía"=10,
+  "Los.Ríos"=20,
+  "Los.Lagos"=20,
+  "Aysén"=2,
+  "Magallanes"=10)
+
+
+sec.basica<-prediccion.por.zonas(min.corte=min.corte, x = datos.casos, n.ahead = 7,modelos = c("tar2","cuad"))
+ggplot(sec.basica, aes(x=dia,y=casos, color=tipo))+geom_point()+geom_line()+scale_y_continuous(trans="log10", limits=c(8000,17000),breaks = seq(8000,16000,1000))+xlim(40,60)
+```
+
+```{r, results='asis'}
+pandoc.table(sec.basica)
+```
+
+
+
+### Predicción por regiones
+
+Eliminaremos la predicción de Aysén, que presentan tasas estabilizadas. 
+
+Se debe observar el intervalo de confianza superior elevado en Arica y Parinacota, Antofagasta y O'Higgins. Atacama presenta una predicción muy pesimista con AR(1), debido al fuerte incremento en casos de los últimos días.
+Recordemos que el algoritmo inicia desde 10 casos en cada Región. 
+
+```{r}
+prediccion<-prediccion.casos(datos.casos[setdiff(names(datos.casos),c("total","Aysén"))],min.casos = 10,modelos=c("tar2","cuad"))
+plot( prediccion)+guides(color=guide_legend("Modelo"))+theme(legend.position="bottom", legend.direction = "vertical")
+```
+
+
+Las tablas por regiones se incluye en el Anexo I
+
+## Ventiladores y Casos en UCI
+
+
+Una primera serie es la de ventiladores disponibles. El uso de hoy es prácticamente igual al de ayer. 
+
+```{r, results='asis'}
+pandoc.table(tail(datos.ministerio.bruto$vent.diario[,c("fecha","total","disponibles","ocupados")],7), "Uso de ventiladores última semana", row.names=F)
+```
+
+```{r}
+rvd<-melt(datos.ministerio.bruto$vent.diario,id.vars = c("fecha","dia"))
+
+ggplot(rvd,aes(x=as.Date(fecha),y=value,color=variable))+geom_point()+geom_line()+ylim(0,1700)+ylab("Nº de Ventiladores")+xlab("Fecha")
+```
+
+Si analizamos la serie total de pacientes en UCI para Covid-19, podemos ver un nuevo máximo en la serie con 415 casos
+
+```{r, results='asis'}
+pandoc.table(tail(datos.ministerio.bruto$hosp.uci.regiones[,c("fecha","total")],7), "Uso de camas UCI Covid-19", row.names=F)
+```
+
+```{r}
+ggplot(datos.ministerio.bruto$hosp.uci.regiones,aes(x=as.Date(fecha),y=total))+geom_line()+ylim(0,400)+ylab("Nº de casos en UCI")+xlab("Fecha")
+```
+
+Al analizar la serie por regiones, podemos ver que en su mayoría los casos UCI se encuentran en la Región Metropolitana, que ha aumentado de forma muy fuerte su ocupación desde hace 7 días. En el resto de las regiones, permanece relativamente estable la ocupación de todas las regiones en los últimos días, aunque es preocupante el incremento en Antofagasta.
+
+```{r}
+ggplot(datos.hosp.uci[datos.hosp.uci$region!="total",],aes(x=as.Date(fecha), y=casos, color=region))+geom_line()+geom_point()+paleta
+ggplot(datos.hosp.uci[!(datos.hosp.uci$region %in% c("Metropolitana","total")),],aes(x=as.Date(fecha), y=casos, color=region))+geom_line()+geom_point()+paleta
+
+```
+
+
+## Decesos
+
+Si observamos la serie total de decesos, observamos una tasa relativamente constante en los últimos 10 días, atribuible a la región Metropolitana, ya que el resto de las series muestra menor cantidad de casos.
+
+```{r serie decesos}
+plot.avance.pais(datos.decesos,predicted = F,min.casos = 2,span.param = NULL) +guides(color=guide_legend("Región"))+theme_bw()+paleta+geom_line(alpha=0.6,size=1.5)
+```
+
+
+**Fuentes de información**:
+Principalmente, se utilizó el reporte diario del [MINSAL](https://www.minsal.cl/nuevo-coronavirus-2019-ncov/casos-confirmados-en-chile-covid-19/), usando [Wayback machine](https://archive.org/web/) para recopilar la información ya no disponible. También se ocupa la nueva serie disponible en el [Github del Ministerio de Ciencias](https://github.com/MinCiencia/Datos-COVID19).
+
+## Anexo I: Predicciones por región
+
+
+```{r,results='asis'}
+prediccion<-prediccion.casos(datos.casos[setdiff(names(datos.casos),c("Aysén","total","Atacama"))],min.casos = 10, modelos=c("tar2","cuad"))
+r<-lapply(prediccion$tar2,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Casos nuevos: tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$cuad,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "General: cuadrático + AR(2)")
+```
+

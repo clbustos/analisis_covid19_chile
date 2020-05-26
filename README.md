@@ -52,12 +52,19 @@ La licencia de uso del código fuente es MIT. Revise el archivo LICENSE para má
 (Pausa)
 
 * 15/05/2020: https://rpubs.com/clbustos/615041 
+* 16/05/2020: https://rpubs.com/clbustos/615414
+* 17/05/2020: https://rpubs.com/clbustos/615860
+
+(Pausa)
+
+* 20/05/2020:
 
 ## Pruebas del modelo predictivo:
 
 * 27 de Marzo al 3 de Abril:  https://rpubs.com/clbustos/594816
 * 8 de Abril al 15 de Abril:  https://rpubs.com/clbustos/600098
 * 16 de Abril al 23 de Abril: https://rpubs.com/clbustos/603900
+* 8 de Mayo al 15 de Mayo: https://rpubs.com/clbustos/615393
 
 
 ## Análisis de decesos en función de los casos (experimental)

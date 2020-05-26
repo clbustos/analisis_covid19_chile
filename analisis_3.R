@@ -14,6 +14,7 @@ library(R.cache)
 library (RCurl)
 library(benford.analysis)
 library(dynlm)
+library(stlplus)
 
 source("funciones_soporte.R")
 

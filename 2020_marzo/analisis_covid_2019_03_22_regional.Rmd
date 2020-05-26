@@ -1,0 +1,107 @@
+---
+title: "Análisis evolución Covid-19 para regiones de Chile (22/03/2020)"
+author: "Claudio Bustos"
+date: "22/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("analisis_regiones_chile.R")
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+library(pander)
+datos.pais<-lapply(datos.pais,function(x) {x<-x[x$fecha<=43911,]})
+```
+
+**NOTA**: Lo que presento aquí es un ejemplo de como realizar análisis de series de tiempo, usando datos de la evolución total de casos disponible en fuentes públicas en internet. No tiene ninguna validez epidemiológica, ya que eso requería un modelo de la diseminación de la enfermedad. En particular, las predicciones son solo válidas en cuanto no existan cambios en las políticas públicas; si los hay, se esperaría que (ojalá) las predicciones fuesen incorrectas.
+
+## Análisis de datos observados
+
+Se utiliza una escala logarítmica, que permite mejor apreciar las tendencias en los casos totales, además de partir en todos las regiones con al menos 10 casos. Se puede ver claramente que Ñuble presenta la progresión mayor, junto a Biobio. Ambas, sin embargo, se encuentran ajustándose a la progresión de Santiago. 
+
+```{r}
+plot.avance.pais(datos.pais,predicted = F,min.casos = 10,span.param = 1)
+```
+
+
+Ajustando una curva de regresión exponencial, podemos ver que existe variabilidad en su ajuste por región. En particular, en el Maule se aprecia un fuerte incremento en el último día, así como el explosivo crecimiento en Ñuble, que ha sido controlado. La Región Metropolitana presenta una curva de crecimiento del 43.7%, bastante preocupante, ya que indica que los casos se duplican cada `r round(log(2)/log(1.437),2)` días.
+
+```{r}
+plot.avance.pais(datos.pais,predicted = T,min.casos = 10, span.param = NULL)+facet_wrap(~pais)
+```
+
+Graficando la tasa de nuevos casos usando media móvil con ventana de 3 días, se puede apreciar mejor la disminución de casos en la Metropolitana, pero así también el aumento importante en Maule.
+
+
+```{r}
+plot.tasa.casos(datos.pais,span.param = NULL)+facet_wrap(~pais)
+```
+
+
+## Predicción
+
+**NOTA**: Se presentan aquí tres metodologías de predicción. Recuerden que corresponden a un ejercicio para mostrar las bondades y dificultades de cada técnica
+
+Para predecir, se ocupan tres técnicas distintas:
+
+* regresión exponencial sobre datos totales: se ajusta la serie a la expresión $y=a * r^t$ usando regresión lineal. Es válida si el proceso no cambia a lo largo del tiempo. Se caracteriza porque el intervalo de confianza es constante al transformar los datos a logaritmo. 
+* tendencia sobre casos nuevos + AR(1): Se modela la tendencia de los casos nuevos usando regresión exponencial, más la relación que existe entre dos mediciones contiguas. El error estándar aumenta de manera importante a lo largo del tiempo, tanto por el error al calcular la tendencia, como por el componente AR(1). El valor medio obtenido es bastante sensible a los cambios en las mediciones finales.
+* ARIMA(1,1,0) más deriva: Se ocupa un modelo autorregresivo, con diferenciación y deriva. Esto implica que se asume que los datos tienen una tendencia constante (como el modelo de regresión exponencial), y pero se modela la relación que existe entre casos contiguos (como el modelo de tendencia). Tiende a generar modelos menos variables que el de tendencia + AR(1), pero asume que la curva de crecimiento es la misma de toda la serie de datos.
+
+
+## Predicción Metropolitana, Ñuble, Biobío y Los Lagos
+
+
+Analizamos en primer lugar las curvas de la Región Metropolitana, Ñuble, Biobío y los Lagos, porque sus predicciones son más estables. La predicción de tendencia reciente es bastante optimista para la Región Metropolitana y Ñuble, no así para Biobío.
+
+```{r}
+prediccion<-prediccion.casos(datos.pais[c("Metropolitana","Ñuble","Biobío","Los.Lagos")],min.casos = 1)
+plot( prediccion)
+```
+
+Se presentan a continuación las distintas predicciones. Se debe recordar los supuestos de cada modelo para realizar una interpretación adecuada.
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$exp, function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Exponencial")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$arima,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "ARIMA(1,1,0) con deriva")
+```
+
+
+## Predicción Araucanía y Maule
+
+En el caso de Araucanía y Maule, la gran variabilidad en la cantidad de casos por día, aumenta de manera importante el error de las estimaciones del método de tendencia + AR(1). Es decir, debemos ser cautos en establecer tendencias para estas dos regiones.
+
+```{r}
+prediccion<-prediccion.casos(datos.pais[c("Araucanía","Maule")],min.casos=1)
+plot( prediccion)
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$tar1,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Tendencia + AR(1)")
+```
+
+```{r,results='asis'}
+r<-lapply(prediccion$exp, function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "Exponencial")
+```
+
+
+```{r,results='asis'}
+r<-lapply(prediccion$arima,function(x) {round(tail(x,7)[,c(1,2,3,4)],2)})
+formatear_tablas(r, "ARIMA(1,1,0) con deriva")
+```
+
+
+**Fuentes de información**:
+Principalmente, se utilizó el reporte diario del [MINSAL](https://www.minsal.cl/nuevo-coronavirus-2019-ncov/casos-confirmados-en-chile-covid-19/), usando [Wayback machine](https://archive.org/web/) para recopilar la información ya no disponible.
+

@@ -29,11 +29,10 @@ predecir.dia.critico.chile<-function() {
 #' @param log.param  si se presenta o no en escala logaritmica el eje Y
 #' @param predicted si se presenta o no la curva exponencial predicha.
 
-plot.avance.pais<-function(x, nvar='casos', min.casos=5, span.param=0.40, log.param=T, predicted=TRUE, con.etiqueta=TRUE) {
+plot.avance.pais<-function(x, nvar='casos', min.casos=5, span.param=0.40, log.param=T, predicted=TRUE, con.etiqueta=TRUE, plot.stl=NULL, stl.period=7) {
   library(ggrepel)
 
   x<-lapply(x,function(xx) {
-
     xx$y<-xx[[nvar]]
     xx<-xx[xx$y>=min.casos,]
     xx$dia<-1:nrow(xx)
@@ -43,6 +42,10 @@ plot.avance.pais<-function(x, nvar='casos', min.casos=5, span.param=0.40, log.pa
       lm.1<-lm(y~dia,xx)
     }
     xx$pr<-exp(predict(lm.1))
+    if(!is.null(plot.stl)) {
+      stl.l<-stlplus::stlplus(xx$y, n.p=stl.period, s.window=stl.period)
+      xx$trend<-stl.l$data$trend
+    }
     xx
   })
 
@@ -53,11 +56,9 @@ plot.avance.pais<-function(x, nvar='casos', min.casos=5, span.param=0.40, log.pa
     lm.paises<-sapply(x,function(x) {
       if(log.param) {
         lm.1<-lm(log(y)~dia,x)
-
       }
       else {
         lm.1<-lm(y~dia,x)
-
       }
         as.numeric(round(100*(exp(coef(lm.1)[2])-1),1))
   })
@@ -66,7 +67,7 @@ plot.avance.pais<-function(x, nvar='casos', min.casos=5, span.param=0.40, log.pa
 
   unido<-do.call(rbind,x )
   unido.ultimo<-do.call(rbind,x.ultimo)
-  gg<-ggplot(unido, aes(x=dia, y=y, color=pais))+geom_point(alpha=0.5, size=2)
+  gg<-ggplot(unido, aes(x=dia, y=y, color=pais))+geom_point(alpha=0.4, size=2)
 
   if(con.etiqueta) {
     gg<-gg+geom_label_repel(aes(label=pais), data=unido.ultimo)
@@ -84,17 +85,23 @@ plot.avance.pais<-function(x, nvar='casos', min.casos=5, span.param=0.40, log.pa
     gg<-gg+geom_smooth(span=span.param, alpha=0.75,se = FALSE, method="loess")
   }
 
+  if(!is.null(plot.stl)) {
+    gg<-gg+geom_line(aes(x=dia,y=trend),size=1.5, alpha=0.50, linetype = "longdash")
+  }
+
+
   gg
 }
 
 #' Grafica la tasa de casos
 #'
+#' Usamos la descomposición por trend, periodica y residuo
+#'
 #' @param  x base de datos, revisar analisis.R para ver ejemplo
 #' @param min.casos mínimo número de casos válidos desde el cual se construye la curva
-#' @param span.param parámetro de suavizado de la curva
 #' @param ventana ventana de días para realizar media móvil.
 
-plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2=FALSE, casos.nuevos=FALSE) {
+plot.tasa.casos<-function(x, min.casos=5, ventana=5, derivada.2=FALSE, casos.nuevos=FALSE, suavizar.puntos=FALSE) {
   if(casos.nuevos) {
     if(derivada.2) {
       ylabt="tasa nuevos dia n / tasa dia n-1"
@@ -116,30 +123,32 @@ plot.tasa.casos<-function(x, min.casos=5, span.param=NULL, ventana=3, derivada.2
     } else {
       dif.log.casos<-c(0,diff(log(x$casos)))
     }
-    if(derivada.2) {
-      roll.mean<-zoo::rollmean(x=c(0,diff(dif.log.casos)),k=ventana)
-      data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
-    } else {
-      roll.mean<-zoo::rollmean(x=dif.log.casos,k=ventana)
 
-      data.frame(dia=x$dia[-(1:(ventana-1))], dif.log.casos=roll.mean, pais=x$pais[1])
+    if(derivada.2) {
+      xx<-c(0,diff(dif.log.casos))
+      stl1<-stlplus(x=xx, n.p = 7,s.window=ventana)
+      data.frame(dia=x$dia, y=xx, trend=stl1$data$trend, pais=x$pais[1])
+    } else {
+      stl1<-stlplus(x=dif.log.casos, n.p=7,s.window=ventana)
+      if(suavizar.puntos) {
+        y<-c(rep(NA,(ventana-1)/2),rollmean(x=dif.log.casos,k = ventana),rep(NA,(ventana-1)/2))
+      } else {
+        y<-dif.log.casos
+      }
+      data.frame(dia=x$dia, y=y, trend=stl1$data$trend, pais=x$pais[1])
     }
     #x$dia<-0:(nrow(x)-1)
     #x<-x[-1,]
     #x
   })
   unido<-do.call(rbind,x )
-  unido$es.mas.1<-unido$dif.log.casos!=0
-
+  unido$es.mas.1<-unido$y!=0
+  #print(unido)
   if(casos.nuevos) {
-  gg<-ggplot(unido, aes(x=dia, y=exp(dif.log.casos), color=pais))+geom_point(show.legend=FALSE)+ylab(ylabt)+geom_line()
+    gg<-ggplot(unido, aes(x=dia, y=exp(y), color=pais))+geom_point(show.legend=FALSE,alpha=0.5,size=2) + ylab(ylabt)+geom_line(alpha=0.2)+geom_line(aes(x=dia,y=exp(trend)),alpha=0.9,size=1.5)
   } else {
-    gg<-ggplot(unido, aes(x=dia, y=exp(dif.log.casos), color=pais, shape=es.mas.1, group=pais))+geom_point(show.legend=FALSE)+ylab(ylabt)+scale_shape_manual(values=c(4,16))+geom_line()
+    gg<-ggplot(unido, aes(x=dia, y=exp(y), color=pais, shape=es.mas.1, group=pais))+geom_point(show.legend=FALSE, alpha=0.5,size=2)+ylab(ylabt)+scale_shape_manual(values=c(4,16))+geom_line(alpha=0.2)+geom_line(aes(x=dia,y=exp(trend)),alpha=0.9,size=1.5)
   }
-  if(!is.null(span.param)) {
-    gg<-gg+geom_smooth(span=span.param)
-  }
-
   gg
 }
 
@@ -268,7 +277,7 @@ prediccion.casos<-function(xx, min.casos=5,n.ahead=7, modelos=c("exp","arima","t
       casos=prediccion$mean,
       li=unname(prediccion$lower),
       ls=unname(prediccion$upper),
-      tipo=rep("General: Cuadrático + AR(2)", n.ahead),
+      tipo=rep("General: Cuadrático + AR(1)", n.ahead),
       pais=x$pais[1]
     )
     generar.tabla.final(x,pred.df)
